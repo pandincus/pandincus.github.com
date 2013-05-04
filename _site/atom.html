@@ -1,0 +1,689 @@
+<?xml version="1.0"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Feed Name</title>
+  <link href="http://domain/"/>
+  <link type="application/atom+xml" rel="self" href="http://domain/atom.xml"/>
+  <updated>5/4/2013 6:29:14 PM</updated>
+  <id>http://domain/</id>
+  <author>
+    <name>Author</name>
+    <email>Email</email>
+  </author>
+
+  
+  <entry>
+    <id>http://domain//2013/03/28/searching-with-solr-part-2.html</id>
+    <link type="text/html" rel="alternate" href="http://domain//2013/03/28/searching-with-solr-part-2.html"/>
+    <title>Searching with SOLR - Part 2</title>
+    <updated>3/28/2013 12:00:00 AM</updated>
+    <author>
+      <name>Author</name>
+      <uri>http://domain/</uri>
+    </author>
+    <content type="html">&lt;p&gt;In the &lt;a href=&quot;/blog/searching-with-solr-part-1&quot;&gt;last post&lt;/a&gt; I introduced Solr, explained why it was helpful over straight Lucene, and showed how to get it up and running with some example data.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://danpincas.azurewebsites.net/blog/searching-with-solr-part-1&quot;&gt;Part 1 (Background, installation)&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Part 2 (Custom schema, data import)&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;In this post, I&apos;d like to show how we can quickly get Solr loaded with our own data.&lt;/p&gt;
+&lt;h2&gt;Picking a Data Set&lt;/h2&gt;
+&lt;p&gt;For the purposes of this tutorial, let&apos;s use a sample data set everyone&apos;s familiar with: &lt;a href=&quot;http://msftdbprodsamples.codeplex.com/releases/view/93587&quot;&gt;AdventureWorks&lt;/a&gt;! (I used the 2008R2 version) This is a great sample data set to use because you can download it, attach the MDF to your local SQL Server Express instance, and be ready to go in minutes.&lt;/p&gt;
+&lt;p&gt;The AdventureWorks database has a huge variety of tables to pick from, and since we&apos;re testing a search engine, we want some data with a fair amount of text. I would have loved to use the &lt;em&gt;Production.ProductReview&lt;/em&gt; table but it only had four rows, which isn&apos;t very fun. Instead, let&apos;s look at Products, Models, and Product Descriptions:&lt;/p&gt;
+&lt;pre class=&quot;brush: sql;&quot;&gt;
+SELECT      p.ProductID, p.Name, p.ProductNumber, pm.Name AS ModelName,
+            pd.[Description], pc.Name AS CategoryName, ps.Name AS SubcategoryName
+FROM        Production.Product p
+INNER JOIN  Production.ProductSubcategory ps
+ON          p.ProductSubcategoryID = ps.ProductSubcategoryID
+INNER JOIN  Production.ProductCategory pc
+ON          ps.ProductCategoryID = pc.ProductCategoryID
+INNER JOIN  Production.ProductModel pm
+ON          pm.ProductModelID = p.ProductModelID
+INNER JOIN  Production.ProductModelProductDescriptionCulture pmpdc
+ON          pm.ProductModelID = pmpdc.ProductModelID
+INNER JOIN  Production.Culture c
+ON          pmpdc.CultureID = c.CultureID
+INNER JOIN  Production.ProductDescription pd
+ON          pmpdc.ProductDescriptionID = pd.ProductDescriptionID
+WHERE       c.Name = &apos;English&apos;
+&lt;/pre&gt;
+&lt;p&gt;Note that in the above query we&apos;re limiting the result data set to English. Multilingual queries are definitely possible in Solr but are outside the scope of this post. Keep in mind that if you&apos;re going to be indexing data in multiple languages, you&apos;ll &lt;a href=&quot;http://stackoverflow.com/questions/6439019/single-or-multi-core-solr&quot;&gt;probably want to run multiple Solr cores&lt;/a&gt;, one for each language that you&apos;re indexing. I&apos;m not much more familiar with it than that, so let me know if you have any suggestions and I&apos;ll edit this post.&lt;/p&gt;
+&lt;p&gt;The above query will return 294 products. Not too bad, but definitely just scratching the surface of what Solr can do in terms of indexing performance.&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/adventureworks_query_result.png&quot; alt=&quot;example result of running above SQL query against AdventureWorks&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;Note that although all of the information is about products, we&apos;ll probably want to index these fields in different ways. For example, when a user searches by product number, will we want to return them similar or partial matches, or only an exact match? If a user searches the description, on the other hand, we&apos;ll probably want a fairly loose search, instructing Solr to analyze the text and break it apart.&lt;/p&gt;
+&lt;h2&gt;Preparing Solr for our Data&lt;/h2&gt;
+&lt;p&gt;In the previous post we just extracted Solr and ran the example instance. We&apos;re going to need to make some changes to that if we want it to work properly with our data.&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Before you proceed, make sure your Solr instance is not running&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;First, let&apos;s copy the &lt;em&gt;example&lt;/em&gt; folder and rename it. This way, if we ever mess up we can go back to the example folder that was already working.&lt;/p&gt;
+&lt;pre class=&quot;brush: ps&quot;&gt;
+CD c:\solr
+MKDIR adventureworks
+XCOPY example\* adventureworks /E
+CD adventureworks
+RMDIR /S /Q exampledocs
+RMDIR /S /Q example-DIH
+RMDIR /s /Q multicore
+&lt;/pre&gt;
+&lt;p&gt;That should leave you with a clean copy of a Solr instance, without a lot of the example stuff. Now let&apos;s make a few more changes:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Navigate to the &lt;strong&gt;adventureworks\solr&lt;/strong&gt; folder. This is where your Solr instance keeps track of all of its cores.&lt;/li&gt;
+&lt;li&gt;You should still see the &lt;strong&gt;collection1&lt;/strong&gt; core that was used in the previous post. Let&apos;s rename it.&lt;/li&gt;
+&lt;li&gt;Rename &lt;strong&gt;collection1&lt;/strong&gt; to &lt;strong&gt;products&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Open &lt;strong&gt;solr.xml&lt;/strong&gt; and replace everything that says &lt;strong&gt;collection1&lt;/strong&gt; with &lt;strong&gt;products&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Open up the &lt;strong&gt;products&lt;/strong&gt; folder. You&apos;ll see two folders, &lt;strong&gt;conf&lt;/strong&gt; and &lt;strong&gt;data&lt;/strong&gt;. &lt;strong&gt;conf&lt;/strong&gt; is, as you might have guessed, where all of the configuration files for the &lt;strong&gt;products&lt;/strong&gt; core are located. &lt;strong&gt;data&lt;/strong&gt; is where the actual indexed information is stored on the file system.&lt;/li&gt;
+&lt;li&gt;Since this &lt;strong&gt;data&lt;/strong&gt; folder is left over from the example core, let&apos;s delete it.&lt;/li&gt;
+&lt;li&gt;In the &lt;strong&gt;conf&lt;/strong&gt; folder, open up the &lt;strong&gt;schema.xml&lt;/strong&gt; file. This is where each core specifies what kind of data (what fields) the index can handle, and how to index those fields. The default schema you get out of the box is very flexible, but let&apos;s custom tailor it to our data.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;h2&gt;Schema Configuration&lt;/h2&gt;
+&lt;p&gt;First, rename the schema. (This is only for display purposes, but hey, let&apos;s be neat ;-)&lt;/p&gt;
+&lt;pre class=&quot;brush: xml&quot;&gt;
+&lt;schema name=&quot;adventureworks_products&quot; version=&quot;1.5&quot;&gt;
+&lt;/pre&gt;
+&lt;p&gt;If you scroll down, the next thing you&apos;ll notice is all of the fields. By default, you&apos;ll see fields like id, sku, name, manu (manufacturer), cat (category), and more. All of these fields have different types. All of these types actually roll up to Java classes and/or primitives, such as &lt;code&gt;String&lt;/code&gt;, &lt;code&gt;int&lt;/code&gt; and &lt;code&gt;boolean&lt;/code&gt;. A &lt;code&gt;string&lt;/code&gt; type is plain text, great for text that should be indexed as-is and left alone. This is especially useful if the user won&apos;t be &apos;searching&apos; on that field, but instead selecting it from a list (e.g. product categories). The &lt;code&gt;text_general&lt;/code&gt;, &lt;code&gt;text_en&lt;/code&gt;, &lt;code&gt;text_en_splitting&lt;/code&gt;, and &lt;code&gt;text_en_splitting_tight&lt;/code&gt; field types are all great for text that will be searched, but with varying options depending on the kind of text. For example, the &lt;strong&gt;schema.xml&lt;/strong&gt; comments describe &lt;code&gt;text_en&lt;/code&gt; as:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;A text field with defaults appropriate for English:
+it tokenizes with StandardTokenizer, removes English stop words
+(lang/stopwords_en.txt), down cases, protects words from protwords.txt,
+and finally applies Porter&apos;s stemming.  The query time analyzer
+also applies synonyms from synonyms.txt.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;This sounds great for our Product Description field! But what about Product Numbers? We probably shouldn&apos;t treat a Product Number as normal English text. The comments describe the &lt;code&gt;text_en_splitting_tight&lt;/code&gt; as:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Less flexible matching, but less false matches.  Probably not ideal for product names,
+but may be good for SKUs.  Can insert dashes in the wrong place and still match.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;This sounds ideal for the Product Number. You can learn about all of the field types by reading the comments in the &lt;code&gt;&amp;lt;types&amp;gt;&lt;/code&gt; section of &lt;strong&gt;schema.xml&lt;/strong&gt;. Note that there&apos;s nothing special about these fields, per se -- they all roll up to the Java class &lt;code&gt;solr.TextField&lt;/code&gt;. However, it&apos;s the different tokenizers and filters applied to them that makes the difference. For example, do we convert the string to lowercase before indexing it? Do we &apos;stem&apos; words so that words like &apos;housing&apos; and &apos;purchasing&apos; become &apos;house&apos; and &apos;purchase&apos;? How do we know when to split a string into &apos;words&apos;, anyway? (What counts as a delimiter) It&apos;s worth spending some time in &lt;strong&gt;schema.xml&lt;/strong&gt; and examining the different field types and their properties.&lt;/p&gt;
+&lt;p&gt;Let&apos;s use the following field definitions for our products data set:&lt;/p&gt;
+&lt;pre class=&quot;brush: xml&quot;&gt;
+&lt;field name=&quot;id&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot; required=&quot;true&quot;&gt;&lt;/field&gt;
+&lt;field name=&quot;product_number&quot; type=&quot;text_en_splitting_tight&quot; indexed=&quot;true&quot; stored=&quot;true&quot; omitNorms=&quot;true&quot;&gt;&lt;/field&gt;
+&lt;field name=&quot;model_name&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot; omitNorms=&quot;true&quot;&gt;&lt;/field&gt;
+&lt;field name=&quot;name&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
+&lt;field name=&quot;product_description&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
+&lt;field name=&quot;product_category&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
+&lt;field name=&quot;product_subcategory&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
+&lt;/pre&gt;
+&lt;p&gt;Leave all of the other fields (after the first batch of fields) alone (e.g. the common metadata fields).&lt;/p&gt;
+&lt;p&gt;Now scroll down to where you see several &lt;code&gt;&amp;lt;copyField&amp;gt;&lt;/code&gt; tags. Copyfield commands are useful when you want to simplify your search query by only searching one field for a variety of different types of data. It&apos;s also useful when you want to index one field multiple ways. Replace the first batch of copy fields with the following:&lt;/p&gt;
+&lt;pre class=&quot;brush: xml&quot;&gt;
+&lt;copyField source=&quot;name&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
+&lt;copyField source=&quot;product_number&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
+&lt;copyField source=&quot;product_description&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
+&lt;copyField source=&quot;model_name&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
+&lt;/pre&gt;
+&lt;p&gt;And that&apos;s it for modifying the schema! Now, let&apos;s tell Solr how to query AdventureWorks and index our data.&lt;/p&gt;
+&lt;h2&gt;Data Import Handler&lt;/h2&gt;
+&lt;p&gt;Solr uses something called a Data Import Handler (DIH) to run batch imports from an external data source. To get started configuring one, you need a data configuration file. Go to &lt;strong&gt;c:\solr\adventureworks\solr\products\conf&lt;/strong&gt; and create a file named &lt;strong&gt;data-config.xml&lt;/strong&gt;. Put this in the file:&lt;/p&gt;
+&lt;pre class=&quot;brush: xml&quot;&gt;
+&lt;dataConfig&gt;  
+  &lt;dataSource type=&quot;JdbcDataSource&quot; name=&quot;ds1&quot;
+        driver=&quot;com.microsoft.sqlserver.jdbc.SQLServerDriver&quot;
+        url=&quot;jdbc:sqlserver://localhost;databaseName=AdventureWorks2008R2&quot;
+        user=&quot;&lt;&lt;SQL USERNAME&gt;&gt;&quot;
+        password=&quot;&lt;&lt;SQL PASSWORD&gt;&gt;&quot;&gt;&lt;/dataSource&gt;
+  &lt;document&gt;
+    &lt;entity name=&quot;data&quot; dataSource=&quot;ds1&quot; pk=&quot;key&quot;
+    query=&quot;SELECT p.ProductID, p.Name, p.ProductNumber, pm.Name AS ModelName, pd.[Description], pc.Name AS CategoryName, ps.Name AS SubcategoryName FROM Production.Product p INNER JOIN Production.ProductSubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID INNER JOIN Production.ProductCategory pc ON ps.ProductCategoryID = pc.ProductCategoryID INNER JOIN Production.ProductModel pm ON pm.ProductModelID = p.ProductModelID INNER JOIN Production.ProductModelProductDescriptionCulture pmpdc ON pm.ProductModelID = pmpdc.ProductModelID INNER JOIN Production.Culture c ON pmpdc.CultureID = c.CultureID INNER JOIN Production.ProductDescription pd ON pmpdc.ProductDescriptionID = pd.ProductDescriptionID WHERE c.Name = &apos;English&apos;&quot;&gt;
+      &lt;field column=&quot;ProductID&quot; name=&quot;id&quot;&gt;&lt;/field&gt;
+      &lt;field column=&quot;ProductNumber&quot; name=&quot;product_number&quot;&gt;&lt;/field&gt;
+      &lt;field column=&quot;ModelName&quot; name=&quot;model_name&quot;&gt;&lt;/field&gt;
+      &lt;field column=&quot;Description&quot; name=&quot;product_description&quot;&gt;&lt;/field&gt;
+      &lt;field column=&quot;CategoryName&quot; name=&quot;product_category&quot;&gt;&lt;/field&gt;
+      &lt;field column=&quot;SubcategoryName&quot; name=&quot;product_subcategory&quot;&gt;&lt;/field&gt;
+    &lt;/entity&gt;
+  &lt;/document&gt;
+&lt;/dataConfig&gt;
+&lt;/pre&gt;
+&lt;p&gt;The contents of this file are fairly self-explanatory: we first describe a data source, specifying its driver, url, username, password, and then describe the query that is associated with that data source. A query is represented by a &lt;code&gt;&amp;lt;document&amp;gt;&lt;/code&gt; tag, meaning each result from this query will go into one Lucene document. Inside the query we specify the fields that we care about and associate them to the Solr fields in our &lt;strong&gt;schema.xml&lt;/strong&gt; file.&lt;/p&gt;
+&lt;p&gt;Now, we have to tell solr that we want to use a data import handler with this configuration file. Open up your &lt;strong&gt;solrconfig.xml&lt;/strong&gt; file (should be located in &lt;strong&gt;c:\solr\adventureworks\solr\products\conf\solrconfig.xml&lt;/strong&gt;) and, anywhere in the request handlers section, add the following:&lt;/p&gt;
+&lt;pre class=&quot;brush: xml&quot;&gt;
+&lt;requestHandler name=&quot;/dataimport&quot; class=&quot;org.apache.solr.handler.dataimport.DataImportHandler&quot;&gt;
+  &lt;lst name=&quot;defaults&quot;&gt;
+    &lt;str name=&quot;config&quot;&gt;data-config.xml&lt;/str&gt;
+  &lt;/lst&gt;
+&lt;/requestHandler&gt;
+&lt;/pre&gt;
+&lt;p&gt;Then, near the top of this file, tell Solr to load the libraries that deal with data import:&lt;/p&gt;
+&lt;pre class=&quot;brush: xml&quot;&gt;
+&lt;lib dir=&quot;../../../dist/&quot; regex=&quot;solr-dataimporthandler-.*\.jar&quot;&gt;&lt;/lib&gt;
+&lt;/pre&gt;
+&lt;p&gt;Almost done! We just need to tell Solr about our driver, which in this case is the Microsoft-provided JDBC--&amp;gt;SQL Server driver. To have Solr load this driver, &lt;a href=&quot;http://msdn.microsoft.com/en-us/sqlserver/aa937724.aspx&quot;&gt;download it&lt;/a&gt; and, after installation, copy the &lt;strong&gt;sqljdbc4.jar&lt;/strong&gt; file to *&lt;em&gt;c:\solr\adventureworks\solr\products\lib*&lt;/em&gt;. (If no &lt;strong&gt;lib&lt;/strong&gt; folder exists, create one)&lt;/p&gt;
+&lt;p&gt;Now, start Solr:&lt;/p&gt;
+&lt;pre class=&quot;brush: ps&quot;&gt;
+java -jar start.jar
+&lt;/pre&gt;
+&lt;p&gt;Solr should start up without any errors.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Note:&lt;/strong&gt; Depending on how much you&apos;ve modified your schema, you may see the following error on startup:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Caused by: java.lang.NumberFormatException: For input string: &amp;quot;MA147LL/A&amp;quot;&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;If you see this error, it&apos;s related to the &lt;strong&gt;elevate.xml&lt;/strong&gt; file. Delete everything inside the &lt;code&gt;&amp;lt;elevate&amp;gt;&lt;/code&gt; tag and the error should go away. For more information, see here: &lt;a href=&quot;http://wiki.apache.org/solr/QueryElevationComponent#elevate.xml&quot;&gt;http://wiki.apache.org/solr/QueryElevationComponent#elevate.xml&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;When you open up your Solr instance in your web browser, you should see the &lt;strong&gt;products&lt;/strong&gt; core and when you expand it, you should be able to click on the &lt;strong&gt;Data Import&lt;/strong&gt; button and see a screen like this:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/solr_data_import_handler.png&quot; alt=&quot;solr data import handler screen&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;Let&apos;s run a full import! Make sure you have the &lt;strong&gt;commit&lt;/strong&gt; checkbox checked, and then click the &lt;strong&gt;Execute&lt;/strong&gt; button. In the console window for Solr you should see something like:&lt;/p&gt;
+&lt;pre class=&quot;brush: ps&quot;&gt;
+INFO: [products] webapp=/solr path=/dataimport params={optimize=false&amp;clean=fals
+e&amp;indent=true&amp;commit=true&amp;verbose=false&amp;command=full-import&amp;debug=false&amp;wt=json}
+ status=0 QTime=27 {add=[680 (1430726226597642240), 706 (1430726226680479744), 7
+07 (1430726226682576896), 708 (1430726226684674048), 709 (1430726226685722624),
+710 (1430726226686771200), 711 (1430726226688868352), 712 (1430726226689916928),
+ 713 (1430726226690965504), 714 (1430726226692014080), ... (294 adds)],commit=}
+&lt;/pre&gt;
+&lt;p&gt;Also, if you click the &lt;em&gt;Refresh Status&lt;/em&gt; button you should see a success message:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/solr_data_import_complete.png&quot; alt=&quot;solr data import complete&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;294 adds! Perfect! If we do a query in Solr, we certainly see that there are 294 documents.&lt;/p&gt;
+&lt;p&gt;Now let&apos;s try querying on a term like &apos;aluminum&apos;: &lt;code&gt;http://localhost:8983/solr/products/select?q=aluminum&amp;amp;wt=xml&amp;amp;indent=true&lt;/code&gt;&lt;/p&gt;
+&lt;p&gt;Running the above query, you should get back 105 documents. OK, but that&apos;s nothing special.&lt;/p&gt;
+&lt;p&gt;What if I want to search for a product by a product number? Recall that we set up the schema to use &lt;code&gt;text_en_splitting_tight&lt;/code&gt; for the product numbers, so we should be able to get the product whose number is FR-R92B-58 by searching for FRR92B58. Running the query &lt;code&gt;http://localhost:8983/solr/products/select?q=product_number%3AFRR92B58&amp;amp;wt=xml&amp;amp;indent=true&lt;/code&gt; returns the matching result. Success!&lt;/p&gt;
+</content>
+  </entry>
+  
+  <entry>
+    <id>http://domain//2013/03/16/entity-framework-dealing-with-large-where-in-statements.html</id>
+    <link type="text/html" rel="alternate" href="http://domain//2013/03/16/entity-framework-dealing-with-large-where-in-statements.html"/>
+    <title>Entity Framework - Dealing with large &apos;WHERE IN&apos; statements</title>
+    <updated>3/16/2013 12:00:00 AM</updated>
+    <author>
+      <name>Author</name>
+      <uri>http://domain/</uri>
+    </author>
+    <content type="html">&lt;p&gt;I just wanted to quickly blog about a technique that I found really useful recently. I was in a situation where I was passing a large (30,000+) number of ids from a web app (let&apos;s call it System A) to a console app (System B) using Message Queuing.&lt;/p&gt;
+&lt;p&gt;When System B received the message, it needed to run a query against the database and load information related to each matching record. An easy way to do this in Entity Framework is something like:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+public void DoStuffWithIds(List&lt;int&gt; ids)
+{
+    var context = new MyDatabaseContext();
+    // Get the matching records, pull them into a list
+    var records = new List&lt;Record&gt;();
+    records = context.Records.Where(x =&gt; ids.Contains(x.Id)).ToList();
+    // ...do other stuff
+}
+&lt;/pre&gt;
+&lt;p&gt;Simple, right? OK, but as you may imagine, this translates into a query like the following:&lt;/p&gt;
+&lt;pre class=&quot;brush: sql;&quot;&gt;
+SELECT *
+FROM Records r
+WHERE r.Id IN (123, 124, 125, ... 1999, 2000, 2001, ... )
+&lt;/pre&gt;
+&lt;p&gt;So what? Well, apparently there&apos;s a limit on how long those WHERE ... IN statements can be. Eventually you&apos;ll hit a wall and receive an error message like:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;(put error message here)&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;When you get to this point in your code, you have to get slightly creative. Marc Gravell has &lt;a href=&quot;http://stackoverflow.com/a/5052187/2273&quot;&gt;an excellent post on Stack Overflow&lt;/a&gt; where he outlines a basic solution:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;For data volumes like 300k rows, I would forget EF. I would do this by having a table such as:
+BatchId  RowId
+Where RowId is the PK of the row we want to update, and BatchId just refers to this &amp;quot;run&amp;quot; of 300k rows (to allow multiple at once etc).
+I would generate a new BatchId (this could be anything unique -Guid leaps to mind), and use SqlBulkCopy to insert te records onto this table.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;In my case, my range of ids wasn&apos;t going to approach anywhere near 300k, so I didn&apos;t have to use SqlBulkCopy, but I did like the idea of a temporary batch table. After all, in my experience the performance of a JOIN is loads better than a WHERE ... IN clause.&lt;/p&gt;
+&lt;p&gt;A sample solution using this method:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+public IEnumerable&lt;Record&gt; PerformBatchJoinWithIds(IEnumerable&lt;int&gt; ids)
+{
+    var context = GetContext&lt;MyDatabaseContext&gt;();
+    // Disable auto detection of changes; much faster for batch edits/inserts
+    context.Configuration.AutoDetectChangesEnabled = false;
+    // A GUID will keep track of this batch operation
+    var uniqueId = Guid.NewGuid();
+    // Insert the batchquery objects for each id
+    foreach (var id in ids)
+    {
+        context.BatchQueries.Add(new BatchQuery { Id = uniqueId, IdToQuery = id });
+    }
+    // Detect all changes in one shot and then save them
+    context.ChangeTracker.DetectChanges();
+    context.SaveChanges();
+    // Now we can re-enable auto detection of changes (in case we use this context elsewhere)
+    context.Configuration.AutoDetectChangesEnabled = true;
+    // Join the batch queries table with the records we&apos;re trying to get
+    var entities = context.Records.Join(context.BatchQueries, x =&gt; x.Id, y =&gt; y.IdToQuery, (x, y) =&gt; x)
+        .ToList();
+    // Finally, we can delete all of the BatchQuery records matching the GUID
+    context.Database.ExecuteSqlCommand(&quot;DELETE FROM BatchQueries WHERE ID = {0}&quot;, uniqueId);
+    return entities;
+}
+&lt;/pre&gt;</content>
+  </entry>
+  
+  <entry>
+    <id>http://domain//2013/03/03/searching-with-solr-part-1.html</id>
+    <link type="text/html" rel="alternate" href="http://domain//2013/03/03/searching-with-solr-part-1.html"/>
+    <title>Searching with SOLR - Part 1</title>
+    <updated>3/3/2013 12:00:00 AM</updated>
+    <author>
+      <name>Author</name>
+      <uri>http://domain/</uri>
+    </author>
+    <content type="html">&lt;p&gt;In this series of blog posts, I&apos;m going to walk through the process of getting up and running with using Apache Solr in ASP.NET MVC. This post, the first in the series, will offer background information and show how to get Solr installed.&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;Part 1 (Background, installation)&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://danpincas.azurewebsites.net/blog/searching-with-solr-part-2&quot;&gt;Part 2 (Custom schema, data import)&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h2&gt;Some Background&lt;/h2&gt;
+&lt;p&gt;Lately, the projects I&apos;ve worked on have all required fast and accurate search capabilities. When you start really getting into implementing search in an application, it quickly becomes apparent that a &lt;code&gt;WHERE MyField LIKE &apos;%abc&apos;&lt;/code&gt; isn&apos;t going to cut it. Let&apos;s say your app is an online computer hardware store and a user is searching for a 500 GB SATA hard drive. If the user types in &apos;500 gb sata&apos;, you might treat that as:&lt;/p&gt;
+&lt;pre class=&quot;brush: sql;&quot;&gt;
+    SELECT * FROM Products
+    WHERE Name LIKE &apos;%500 gb sata%&apos;
+&lt;/pre&gt;
+&lt;p&gt;But this is far too restrictive. What if the title of the product is &apos;500 GB AwesomeSauce SATA Hard Drive&apos;? In that case, the product wouldn&apos;t be returned. OK, let&apos;s separate the search terms by splitting on whitespace:&lt;/p&gt;
+&lt;pre class=&quot;brush: sql;&quot;&gt;
+    SELECT * FROM Products
+    WHERE Name LIKE &apos;%500%&apos; OR Name LIKE &apos;%gb%&apos; OR Name LIKE &apos;%sata%&apos;
+&lt;/pre&gt;
+&lt;p&gt;OK, but what if the search terms aren&apos;t in the &lt;strong&gt;Name&lt;/strong&gt; field? What if the name is &apos;AwesomeSauce SATA Hard Drive&apos;, and the fact that it&apos;s 500 GB is somewhere in the &lt;strong&gt;Description&lt;/strong&gt; field?&lt;/p&gt;
+&lt;pre class=&quot;brush: sql;&quot;&gt;
+    SELECT * FROM Products
+    WHERE Name LIKE &apos;%500%&apos; OR Name LIKE &apos;%gb%&apos; OR Name LIKE &apos;%sata%&apos;
+    OR Description LIKE &apos;%500%&apos; OR Description LIKE &apos;%gb%&apos; OR Description LIKE &apos;%sata%&apos;
+&lt;/pre&gt;
+&lt;p&gt;But now we&apos;re now making our search so loose that, if we have a large product catalog, the user will get so many results that they might not even be able to find the item they&apos;re searching for.&lt;/p&gt;
+&lt;p&gt;Obviously, we need something better; something that will eliminate common stop words and figure out which results are truly &lt;strong&gt;relevant&lt;/strong&gt; to the results. Oh, and it should rank them so that the most relevant results appear on top. And it should be fast -- &lt;strong&gt;really fast&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;The &lt;a href=&quot;http://lucene.apache.org/core/&quot;&gt;Apache Lucene&lt;/a&gt; project is a full-fledged indexing/searching library that does all of the above things, and more. I&apos;ve been using the .NET port of it, &lt;a href=&quot;http://lucenenet.apache.org/&quot;&gt;Lucene.NET&lt;/a&gt;, for a while now at my job, and it is ridiculously powerful. Almost linear with its power, however, is its complexity. Getting up and running with Lucene can be a little daunting, and I strongly recommend a book like &lt;a href=&quot;http://www.manning.com/hatcher2/&quot;&gt;Lucene in Action&lt;/a&gt;. Furthermore, at the time you decide to use Lucene, you have to make several administrative decisions: where will the Lucene index be stored? How will we restrict access to it? Which applications will be writing to the Lucene index, and which will be read-only? Do we have to worry about concurrency issues?&lt;/p&gt;
+&lt;p&gt;You can certainly make all of these decisions yourself (we did), but once you get more applications using Lucene and more than one index running, it might be useful to have a tool to help you out.&lt;/p&gt;
+&lt;p&gt;That tool, and the real subject of this blog post, is &lt;a href=&quot;http://lucene.apache.org/solr/&quot;&gt;Apache Solr&lt;/a&gt;. In a nutshell, Solr is a search engine application that uses Lucene to search and index documents. Solr is a Java application that runs in any Java servlet container (like Tomcat or Jetty), but it is basically platform agnostic because your apps will interact with it using &amp;quot;simple REST-like services based on proven standards of XML, JSON, and HTTP.&amp;quot; (Solr in Action) Plus, the devs working on Solr have made it ridiculously simple to install -- in fact, there really isn&apos;t any installation needed, because it ships with a Jetty container built-in. This means that once you unzip the files, all you do is start up the app and you&apos;re good to go.&lt;/p&gt;
+&lt;h2&gt;Installing Solr&lt;/h2&gt;
+&lt;p&gt;Now that we&apos;ve established reasoning behind why we&apos;d want to use Solr, let&apos;s install it! The latest version can be downloaded from the &lt;a href=&quot;http://lucene.apache.org/solr/downloads.html&quot;&gt;Apache Solr website&lt;/a&gt;, which at the time of this post is version 4.1.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Prerequisite:&lt;/strong&gt; You must have the Java Runtime Environment (JRE) installed. &lt;a href=&quot;http://www.oracle.com/technetwork/java/javase/downloads/index.html&quot;&gt;Get it here&lt;/a&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Download the zip file and extract everything inside it to somewhere on your computer like *&lt;em&gt;c:\solr*&lt;/em&gt;.&lt;/li&gt;
+&lt;li&gt;Open a command prompt.&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;CD c:\solr\example\&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;java -jar start.jar&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;Open up a web browser&lt;/li&gt;
+&lt;li&gt;Navigate to &lt;a href=&quot;http://localhost:8983/solr&quot;&gt;http://localhost:8983/solr&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;Disco!&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/solr-dashboard.png&quot; alt=&quot;Screenshot of the Solr dashboard&quot; /&gt;&lt;/p&gt;
+&lt;h2&gt;What Just Happened?&lt;/h2&gt;
+&lt;p&gt;Yeah, it was that easy. OK, you haven&apos;t really done anything yet, but Solr is running, and you have a slick dashboard.&lt;/p&gt;
+&lt;p&gt;That &lt;strong&gt;example&lt;/strong&gt; folder is an example of a Solr instance. The example is extremely flexible and has a lot of things already configured, like a document schema and some indexing options. In reality you&apos;d want to copy this example into a new folder so that you can delete the stuff you don&apos;t need (we&apos;ll do that in a later blog post), but for this tutorial it&apos;s fine.&lt;/p&gt;
+&lt;p&gt;Now that Solr is running, let&apos;s index some data and try out a query! The example instance comes with one index named &lt;strong&gt;collection1&lt;/strong&gt;. It also comes with some example data that is ready to be indexed.&lt;/p&gt;
+&lt;pre class=&quot;brush: ps;&quot;&gt;
+    CD C:\solr\example\exampledocs
+    java -jar post.jar *.xml
+&lt;/pre&gt;
+&lt;p&gt;You&apos;ll see the following output:&lt;/p&gt;
+&lt;pre class=&quot;brush: ps;&quot;&gt;
+    SimplePostTool version 1.5
+    Posting files to base url http://localhost:8983/solr/update using content-type a
+    pplication/xml..
+    POSTing file gb18030-example.xml
+    POSTing file hd.xml
+    POSTing file ipod_other.xml
+    POSTing file ipod_video.xml
+    POSTing file manufacturers.xml
+    POSTing file mem.xml
+    POSTing file money.xml
+    POSTing file monitor.xml
+    POSTing file monitor2.xml
+    POSTing file mp500.xml
+    POSTing file sd500.xml
+    POSTing file solr.xml
+    POSTing file utf8-example.xml
+    POSTing file vidcard.xml
+    14 files indexed.
+    COMMITting Solr index changes to http://localhost:8983/solr/update..
+&lt;/pre&gt;
+&lt;p&gt;Looks like some files were indexed! To check them out, direct your web browser to &lt;a href=&quot;http://localhost:8983/solr/#/collection1/query&quot;&gt;http://localhost:8983/solr/#/collection1/query&lt;/a&gt; and click &lt;strong&gt;Execute Query&lt;/strong&gt;. You&apos;ll see a response, in XML, that includes a bunch of information, including some documents! For example, here&apos;s a 500GB SATA hard drive:&lt;/p&gt;
+&lt;pre class=&quot;brush: xml;&quot;&gt;
+    &lt;doc&gt;
+        &lt;str name=&quot;id&quot;&gt;6H500F0&lt;/str&gt;
+        &lt;str name=&quot;name&quot;&gt;Maxtor DiamondMax 11 - hard drive - 500 GB - SATA-300&lt;/str&gt;
+        &lt;str name=&quot;manu&quot;&gt;Maxtor Corp.&lt;/str&gt;
+        &lt;str name=&quot;manu_id_s&quot;&gt;maxtor&lt;/str&gt;
+        &lt;arr name=&quot;cat&quot;&gt;
+          &lt;str&gt;electronics&lt;/str&gt;
+          &lt;str&gt;hard drive&lt;/str&gt;
+        &lt;/arr&gt;
+        &lt;arr name=&quot;features&quot;&gt;
+          &lt;str&gt;SATA 3.0Gb/s, NCQ&lt;/str&gt;
+          &lt;str&gt;8.5ms seek&lt;/str&gt;
+          &lt;str&gt;16MB cache&lt;/str&gt;
+        &lt;/arr&gt;
+        &lt;float name=&quot;price&quot;&gt;350.0&lt;/float&gt;
+        &lt;str name=&quot;price_c&quot;&gt;350,USD&lt;/str&gt;
+        &lt;int name=&quot;popularity&quot;&gt;6&lt;/int&gt;
+        &lt;bool name=&quot;inStock&quot;&gt;true&lt;/bool&gt;
+        &lt;str name=&quot;store&quot;&gt;45.17614,-93.87341&lt;/str&gt;
+        &lt;date name=&quot;manufacturedate_dt&quot;&gt;2006-02-13T15:26:37Z&lt;/date&gt;
+        &lt;long name=&quot;_version_&quot;&gt;1428538688513507328&lt;/long&gt;
+    &lt;/doc&gt;
+&lt;/pre&gt;
+&lt;p&gt;As you can see from the sample doc, Solr supports many different field types, such as strings, floats, and ints. Let&apos;s try a query similar to the one we discussed at the beginning of this blog post. On the query page, in the field that is labeled &lt;strong&gt;q&lt;/strong&gt;, type &apos;500 gb sata&apos; and hit &apos;Execute Query&apos;:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/solr-query-1.png&quot; alt=&quot;sample solr query for 500 gb sata&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;It works! So now we have an example solr instance running with example data, and we can indeed perform queries on it. In fact, you don&apos;t even need to use the UI to perform these queries. If you examine the web request, all it is doing is making a GET request to &lt;a href=&quot;http://localhost:8983/solr/collection1/select?q=500+gb+sata&amp;amp;wt=xml&amp;amp;indent=true&quot;&gt;http://localhost:8983/solr/collection1/select?q=500+gb+sata&amp;amp;wt=xml&amp;amp;indent=true&lt;/a&gt;. Don&apos;t want to return xml? Change the &lt;code&gt;wt=xml&lt;/code&gt; to &lt;code&gt;wt=json&lt;/code&gt; and execute the request:&lt;/p&gt;
+&lt;pre class=&quot;brush: javascript;&quot;&gt;
+    {
+      &quot;responseHeader&quot;:{
+        &quot;status&quot;:0,
+        &quot;QTime&quot;:0,
+        &quot;params&quot;:{
+          &quot;indent&quot;:&quot;true&quot;,
+          &quot;q&quot;:&quot;500 gb sata&quot;,
+          &quot;wt&quot;:&quot;json&quot;}},
+      &quot;response&quot;:{&quot;numFound&quot;:3,&quot;start&quot;:0,&quot;docs&quot;:[
+          {
+            &quot;id&quot;:&quot;6H500F0&quot;,
+            &quot;name&quot;:&quot;Maxtor DiamondMax 11 - hard drive - 500 GB - SATA-300&quot;,
+            &quot;manu&quot;:&quot;Maxtor Corp.&quot;,
+            &quot;manu_id_s&quot;:&quot;maxtor&quot;,
+            &quot;cat&quot;:[&quot;electronics&quot;,
+              &quot;hard drive&quot;],
+              // .
+              // snip
+              // .
+    }}
+&lt;/pre&gt;
+&lt;p&gt;That means that if you know how to programmatically make web requests, you can now programmatically query against Solr.&lt;/p&gt;
+&lt;p&gt;In the next post, I&apos;m going to walk through messing around with the schema, ditching the example docs, and loading some of our own data into Solr. Stay tuned!&lt;/p&gt;
+</content>
+  </entry>
+  
+  <entry>
+    <id>http://domain//2011/04/16/combining-nuget-with-team-foundation-build.html</id>
+    <link type="text/html" rel="alternate" href="http://domain//2011/04/16/combining-nuget-with-team-foundation-build.html"/>
+    <title>Combining NuGet with Team Foundation Build</title>
+    <updated>4/16/2011 12:00:00 AM</updated>
+    <author>
+      <name>Author</name>
+      <uri>http://domain/</uri>
+    </author>
+    <content type="html">&lt;p&gt;&lt;strong&gt;Update: This post refers to NuGet 1.2. Although the techniques described here are still valid, once NuGet 1.4 comes out, Dan Turner’s fork will no longer be necessary. Thus, please keep the date of this post in mind!&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;I’ve been experimenting with setting up a build server for our dev team at work. I didn’t run into any challenges until I configured the build agent.&lt;/p&gt;
+&lt;p&gt;When I initiated a test build for one of our apps, it failed with a bunch of these:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Could not resolve this reference. Could not locate the assembly “&lt;assembly&gt;”. Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;D’oh! Of course, &lt;strong&gt;my build agent had no idea where to find my project’s external references&lt;/strong&gt;.&lt;/p&gt;
+&lt;p&gt;This is a common scenario, and there are all kinds of suggested solutions. For referencing your own projects, the Microsoft Patterns &amp;amp; Practices group &lt;a href=&quot;http://tfsguide.codeplex.com/wikipage?title=Practices%20at%20a%20Glance:%20%20%20Build&quot;&gt;suggests the following&lt;/a&gt;:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;…you need to get the source or assemblies from that project into the workspace on your build server…edit your TFSBuild.proj file to add the assembly or the solution reference and override the BeforeGet event to get assemblies or sources from each of the team projects on which you have a dependency.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;The above solution, however, would always &lt;strong&gt;get the latest version&lt;/strong&gt; of your referenced projects. What if you wanted a specific version? Microsoft Patterns &amp;amp; Practices suggests &lt;a href=&quot;http://tfsguide.codeplex.com/wikipage?title=Chapter%206%20-%20Managing%20Source%20Control%20Dependencies%20in%20Visual%20Studio%20Team%20System&amp;amp;ProjectName=tfsguide&quot;&gt;branching the external team project into your team project&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Although branching and utilizing source control makes sense, putting third-party, compiled assemblies into source control puts a bad taste in my mouth. Surely there must be some other way? A search on StackOverflow reveals a lot of people &lt;a href=&quot;http://stackoverflow.com/questions/3242663/team-foundation-server-2010-build-with-external-library&quot;&gt;asking&lt;/a&gt; about &lt;a href=&quot;http://stackoverflow.com/questions/1823594/team-foundation-build-resolving-cross-solution-project-references&quot;&gt;how&lt;/a&gt; to do &lt;a href=&quot;http://stackoverflow.com/questions/1207728/team-foundation-server-add-rereference-to-existing-dll-to-a-new-class-library-p&quot;&gt;this&lt;/a&gt;, and a lot of different approaches to solving it.&lt;/p&gt;
+&lt;h2&gt;Enter NuGet&lt;/h2&gt;
+&lt;p&gt;&lt;a href=&quot;http://nuget.codeplex.com/&quot;&gt;NuGet&lt;/a&gt; is a relatively new, open-source package management solution for .NET developers that has been getting a lot of support from Microsoft. (The idea is to make the process of adding external, third-party libraries easier — here’s &lt;a href=&quot;http://haacked.com/archive/2010/10/06/introducing-nupack-package-manager.aspx&quot;&gt;an example&lt;/a&gt;.)&lt;/p&gt;
+&lt;p&gt;Our team has been slowly adopting the use of NuGet for all of our third party libraries. Now that we have a build server up and running, I was wondering: &lt;strong&gt;Can we leverage NuGet to resolve our dependencies for us?&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;Daniel Auger &lt;em&gt;briefly&lt;/em&gt; discusses using NuGet for .NET Dependency Management, but &lt;a href=&quot;http://mynerditorium.blogspot.com/2011/02/net-dependency-management-in-pre-nuget.html&quot;&gt;he dismisses it entirely&lt;/a&gt; in his blog:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;&lt;strong&gt;Nuget is not the final answer for teams using TFS&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;I’ve been following the Nuget dev list closely, and Nuget is considered to be a development time dependency resolver only, not a build time resolver. This means that if you use TFS to track your Nuget package folders, you could still run into dll versioning issues.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;s&gt;I admit I don’t understand Daniel’s point here. NuGet should be able to track versions for us, and the versioning should work just as well on our build server as on our development machines.&lt;/s&gt;&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Edit:&lt;/strong&gt; I asked Daniel about this and, after further discussion, he believes NuGet can be used as a build time resolver as well.&lt;/p&gt;
+&lt;p&gt;To understand how we can use NuGet, let’s look at what happens when we add a package to a typical .NET project:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;MySolution\
+  MyProject\
+    bin\
+    obj\
+    Properties\
+    MyProject.csproj
+    Program.cs
+  MySolution.sln
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Now let’s add, for example, Ninject v 2.2.1.0:&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;MySolution\
+  MyProject\
+    bin\
+    obj\
+    Properties\
+    MyProject.csproj
+    Program.cs
+    packages.config
+  packages\
+    Ninject.2.2.1.0\
+      lib\
+        (the assemblies go here)
+      Ninject.2.2.1.0.nupkg
+    repositories.config
+  MySolution.sln
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+&lt;li&gt;The &lt;strong&gt;packages.config&lt;/strong&gt; file exists once per project, and it lists any NuGet packages that are in use for that project (it also includes the version #):&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre class=&quot;brush: xml;&quot;&gt;
+&lt;packages&gt;
+  &lt;package id=&quot;Ninject&quot; version=&quot;2.2.1.0&quot; /&gt;
+&lt;/packages&gt;
+&lt;/pre&gt;
+&lt;ul&gt;
+&lt;li&gt;The &lt;strong&gt;repositories.config&lt;/strong&gt; file just points to each &lt;strong&gt;packages.config&lt;/strong&gt; file for the solution.&lt;/li&gt;
+&lt;li&gt;The *&lt;em&gt;packages*&lt;/em&gt; folder is where all downloaded assemblies for any projects in the solution are stored.&lt;/li&gt;
+&lt;li&gt;The &lt;strong&gt;MyProject.csproj&lt;/strong&gt; file is changed to add the actual assembly to your project:&lt;/li&gt;
+&lt;/ul&gt;
+&lt;pre class=&quot;brush: xml;&quot;&gt;
+&lt;Reference Include=&quot;Ninject&quot;&gt;
+    &lt;HintPath&gt;..\packages\Ninject.2.2.1.0\lib\.NetFramework 4.0\Ninject.dll&lt;/HintPath&gt;
+&lt;/Reference&gt;
+&lt;/pre&gt;
+&lt;p&gt;We can leverage the &lt;a href=&quot;http://nuget.codeplex.com/releases/58939/download/222685&quot;&gt;command line NuGet.exe program&lt;/a&gt; to download NuGet packages from the online repository to the local &lt;strong&gt;packages\&lt;/strong&gt; folder, just by pointing it at our &lt;strong&gt;packages.config&lt;/strong&gt; file! Here’s the plan:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Each developer would install &lt;strong&gt;NuGet.exe&lt;/strong&gt; on their system path.&lt;/li&gt;
+&lt;li&gt;We’d download &lt;strong&gt;NuGet.exe&lt;/strong&gt; to the build server and add it to the system &lt;code&gt;PATH&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;When developing any project that used NuGet references, we’d add&lt;/li&gt;
+&lt;/ol&gt;
+&lt;pre class=&quot;brush: ps&quot;&gt;
+nuget install “$(ProjectDir)packages.config” -o “$(SolutionDir)packages”
+&lt;/pre&gt;
+&lt;p&gt;to the project’s Pre-build event. &lt;em&gt;(This will tell NuGet to install any packages listed in the project’s packages.config, and download their files to the ‘packages’ folder under the solution folder.)&lt;/em&gt;&lt;/p&gt;
+&lt;p&gt;Almost perfect. But what if we needed references that weren’t on NuGet? Perhaps we had to reference some obscure vendor .dll that had no place in a public gallery. To handle this case, we had to create a local NuGet repository and agree to store all internal .dlls there.&lt;/p&gt;
+&lt;p&gt;But wait! The &lt;code&gt;nuget install&lt;/code&gt; command only lets us specify &lt;strong&gt;one&lt;/strong&gt; source for our libraries; meaning we can either specify the public NuGet repository or our local repository, but not both.&lt;/p&gt;
+&lt;p&gt;Fortunately, in &lt;a href=&quot;http://nuget.codeplex.com/discussions/249628&quot;&gt;a discussion on CodePlex&lt;/a&gt;, &lt;a href=&quot;http://www.codeplex.com/site/users/view/dant199&quot;&gt;Dan Turner&lt;/a&gt; decided to be amazing and &lt;a href=&quot;http://nuget.codeplex.com/SourceControl/network/Forks/dant199/NuGetMultipleSources&quot;&gt;create a fork of NuGet.exe that allows you to specify multiple sources&lt;/a&gt;. This makes our entire Pre-build event:&lt;/p&gt;
+&lt;pre class=&quot;brush: ps&quot;&gt;
+nuget install “$(ProjectDir)packages.config” -o “$(SolutionDir)packages”
+-s “\\asa01\asa_share\Dan\ASA NuGet Repository”;https://go.microsoft.com/fwlink/?LinkID=206669
+&lt;/pre&gt;
+&lt;p&gt;This solution, to me, feels perfect. We’re not storing any assemblies in source control, and our &lt;strong&gt;packages.config&lt;/strong&gt; file should handle package versioning for us.&lt;/p&gt;
+&lt;p&gt;A big thank you to Dan Turner for making those changes to NuGet.exe. &lt;em&gt;(Perhaps it’ll get added to trunk?)&lt;/em&gt; Hopefully this article will guide someone else in a similar situation!&lt;/p&gt;
+</content>
+  </entry>
+  
+  <entry>
+    <id>http://domain//2011/04/09/configuring-your-dell-bios-remotely.html</id>
+    <link type="text/html" rel="alternate" href="http://domain//2011/04/09/configuring-your-dell-bios-remotely.html"/>
+    <title>Configuring Your Dell BIOS Remotely</title>
+    <updated>4/9/2011 12:00:00 AM</updated>
+    <author>
+      <name>Author</name>
+      <uri>http://domain/</uri>
+    </author>
+    <content type="html">&lt;p&gt;This past weekend I had wanted to experiment with setting up Team Foundation Build on a VM, and I figured I’d do it at my leisure from the comfort of my home.&lt;/p&gt;
+&lt;p&gt;After connecting via RDP to my office computer, I realized that I had forgotten to turn on &lt;code&gt;Hardware-Assisted Virtualization (HAV)&lt;/code&gt; before leaving on Friday. Not a big deal, but annoying to think that my VM &lt;a href=&quot;http://www.hanselman.com/blog/VirtualPCTipsAndHardwareAssistedVirtualization.aspx&quot;&gt;could be working 10-30% faster&lt;/a&gt;, and that all I’d had to do was change a setting in the BIOS.&lt;/p&gt;
+&lt;p&gt;I started to wonder if there was some way I could configure my office computer’s BIOS remotely. I looked into a variety of tools, all claiming to give you hundreds of configuration/management options (hardly any of them free, of course). I just wanted a simple tool to &lt;a href=&quot;http://en.wikipedia.org/wiki/Unix_philosophy&quot;&gt;do one thing and do it well&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Then I stumbled across the &lt;a href=&quot;http://en.community.dell.com/techcenter/systems-management/w/wiki/1975.dell-client-configuration-utility.aspx&quot;&gt;Dell Client Configuration Utility&lt;/a&gt;:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Dell® Client Configuration Utility lets you create a stand-alone package that you can manually run on a Dell client computer to configure a BIOS, update a BIOS, or capture BIOS settings inventory data.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Granted, it didn’t let me configure the BIOS remotely, but I could certainly use this tool via RDP.&lt;/p&gt;
+&lt;p&gt;Some stipulations:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;The website lists compatibility as Vista x32 and x64, Server 2003, XP x32 and x64. My office computer is running Windows 7 Pro x64, and I encountered no issues, but YMMV.&lt;/li&gt;
+&lt;li&gt;The &lt;a href=&quot;http://support.us.dell.com/support/downloads/download.aspx?c=us&amp;amp;l=en&amp;amp;s=gen&amp;amp;releaseid=R204280&amp;amp;formatcnt=1&amp;amp;libid=0&amp;amp;fileid=285029&quot;&gt;DCCU webpage&lt;/a&gt; lists the Dell models that are compatible with this tool. &lt;strong&gt;My model was not on this list, but I took a risk.&lt;/strong&gt; Again, YMMV.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;After installation, it seems that the utility is basically a local ASP.NET website running on port 1000. The interface is completely web-based, and didn’t work properly for me in Google Chrome, so I switched to Internet Explorer:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/dccu_1.png&quot; alt=&quot;Dell Client Configuration Utility Overview&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;The steps to configure your BIOS are rather simple:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Click the &lt;strong&gt;Create BIOS Inventory Package&lt;/strong&gt; button.&lt;/li&gt;
+&lt;li&gt;A file named &lt;strong&gt;inventory.exe&lt;/strong&gt; will be generated. Run this file. &lt;em&gt;(You may need to run it as an administrator)&lt;/em&gt;&lt;/li&gt;
+&lt;li&gt;A file named &lt;strong&gt;TaskResult.xml&lt;/strong&gt; will be created in the same directory as the &lt;strong&gt;inventory.exe&lt;/strong&gt;. This is your computer’s BIOS configuration, in XML format.&lt;/li&gt;
+&lt;li&gt;Now, back in the web interface, under the &lt;strong&gt;BIOS Settings&lt;/strong&gt; heading, browse for the &lt;strong&gt;TaskResult.xml&lt;/strong&gt; file and then click the import button to import the settings.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/dccu_2.png&quot; alt=&quot;Importing Collected BIOS Inventory&quot; /&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Now the settings should all load in the grid below. Go ahead and scroll or search for the setting you wanted to change (so in my case, Virtualization).&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/dccu_3.png&quot; alt=&quot;Enabling CPU Virtualization in BIOS&quot; /&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Make the change(s), and then click &lt;strong&gt;Create BIOS Settings Package&lt;/strong&gt; at the very bottom of the screen.&lt;/li&gt;
+&lt;li&gt;A file named &lt;strong&gt;settings.exe&lt;/strong&gt; will be generated. Run this file. &lt;em&gt;(You may need to run it as an administrator)&lt;/em&gt;&lt;/li&gt;
+&lt;li&gt;Restart your computer.&lt;/li&gt;
+&lt;li&gt;Your BIOS settings should now be configured appropriately!&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;Running the &lt;a href=&quot;http://www.microsoft.com/downloads/en/details.aspx?FamilyID=0ee2a17f-8538-4619-8d1c-05d27e11adb2&quot;&gt;HAV Detection Tool&lt;/a&gt;, I was able to confirm the change:&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/blog/dccu_4.png&quot; alt=&quot;Hardware Virtualization Enabled&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;I just thought this was awesome; I was able to reconfigure my BIOS completely through remote desktop! You can even use this tool to configure a bunch of BIOS settings on several client machines — of course, they should probably all be running the same BIOS version, and you’ll have to run the &lt;strong&gt;settings.exe&lt;/strong&gt; file manually on each machine (perhaps through a logon script).&lt;/p&gt;
+&lt;p&gt;I doubt I’ll ever need to use this tool again, but I think it is handy to know that it exists. I wonder if other computer manufacturers offer similar utilities?&lt;/p&gt;
+</content>
+  </entry>
+  
+  <entry>
+    <id>http://domain//2011/04/03/deploying-oracle-applications-without-installing-oracle.html</id>
+    <link type="text/html" rel="alternate" href="http://domain//2011/04/03/deploying-oracle-applications-without-installing-oracle.html"/>
+    <title>Deploying Oracle Applications without Installing Oracle</title>
+    <updated>4/3/2011 12:00:00 AM</updated>
+    <author>
+      <name>Author</name>
+      <uri>http://domain/</uri>
+    </author>
+    <content type="html">&lt;p&gt;Depending on your environment, getting an app running on a production server can sometimes be a daunting task. Generally, the less you have to configure, the better. So when you need to deploy an application that uses &lt;a href=&quot;http://www.oracle.com/technetwork/database/windows/downloads/index-101290.html&quot;&gt;Oracle.DataAccess&lt;/a&gt; and the right version of Oracle isn’t installed, good luck!&lt;/p&gt;
+&lt;p&gt;We shouldn’t blame the server admins. Maybe they are overloaded with tasks and simply don’t have the time, or maybe they’re worried that installing a new version of Oracle will break other functionality. Whatever the case, we have to understand their position.&lt;/p&gt;
+&lt;p&gt;Anyway, I had a similar situation with a recent .NET project I was working on. Fortunately, after doing a bit of research (and being very stubborn), I found a fantastic approach that requires no installation of Oracle on the production machine whatsoever. You simply copy a few *.dlls into your project, push the build, and watch the application run.&lt;/p&gt;
+&lt;p&gt;The below steps are using ODAC 11.2 Release 3 (11.2.0.2.1):&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Install the latest version of ODAC on your development machine.&lt;/li&gt;
+&lt;li&gt;From your oracle client home, grab &lt;code&gt;oci.dll&lt;/code&gt; and &lt;code&gt;oraociei11.dll&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;From the &lt;strong&gt;\bin&lt;/strong&gt; folder inside your oracle client home, grab &lt;code&gt;OraOps11w.dll&lt;/code&gt;.&lt;/li&gt;
+&lt;li&gt;Add the above three .dlls to your Visual Studio project.&lt;/li&gt;
+&lt;li&gt;From the properties window, make sure that the &lt;strong&gt;Build Action&lt;/strong&gt; is set to &lt;strong&gt;Content&lt;/strong&gt; and the &lt;strong&gt;Copy to Output Directory&lt;/strong&gt; is set to &lt;strong&gt;Copy if newer&lt;/strong&gt;.&lt;/li&gt;
+&lt;li&gt;Make sure your project is referencing &lt;code&gt;Oracle.DataAccess&lt;/code&gt;, which it should be anyway if you’re using ODAC in your project.&lt;/li&gt;
+&lt;li&gt;The &lt;strong&gt;Copy Local&lt;/strong&gt; property for &lt;code&gt;Oracle.DataAccess&lt;/code&gt; should be set to &lt;strong&gt;True&lt;/strong&gt;.&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;That’s it! Push your project, and you should see a total of &lt;strong&gt;four&lt;/strong&gt; Oracle-related .dll files get copied into your output folder. Give this to your server admins and tell them you knocked one item off their todo list ;-)&lt;/p&gt;
+&lt;p&gt;&lt;em&gt;Note:&lt;/em&gt; &lt;code&gt;oraociei11.dll&lt;/code&gt; is approximately 120MB, which stinks, but isn’t a bad sacrifice to make.&lt;/p&gt;
+&lt;p&gt;If your team needs to do this on a large number of projects, you could do something neat like &lt;a href=&quot;http://haacked.com/archive/2010/10/21/hosting-your-own-local-and-remote-nupack-feeds.aspx&quot;&gt;create a local NuGet package&lt;/a&gt;. I have a blog post about this coming soon.&lt;/p&gt;
+&lt;p&gt;Credits:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://stackoverflow.com/questions/70602/what-is-the-minimum-client-footprint-required-to-connect-c-sharp-to-an-oracle-da&quot;&gt;What is the minimum client footprint required to connect C# to an Oracle database? – Stack Overflow&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://www.splinter.com.au/using-the-new-odpnet-to-access-oracle-from-c/&quot;&gt;Using the new ODP.Net to access Oracle from C# with simple deployment - Chris Hulbert&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
+  </entry>
+  
+  <entry>
+    <id>http://domain//2011/03/28/taming-adonet-typed-datasets.html</id>
+    <link type="text/html" rel="alternate" href="http://domain//2011/03/28/taming-adonet-typed-datasets.html"/>
+    <title>Taming ADO.NET Typed Datasets</title>
+    <updated>3/28/2011 12:00:00 AM</updated>
+    <author>
+      <name>Author</name>
+      <uri>http://domain/</uri>
+    </author>
+    <content type="html">&lt;p&gt;At my current employer, I get thrown a lot of small “write-it-and-forget-it” apps that often involve querying a bunch of databases and producing some result. Since we’re a fairly large institution, this might involve querying a variety of database servers — not all SQL Server.&lt;/p&gt;
+&lt;p&gt;For these kinds of projects, I love ADO.NET Typed DataSets. Even though there are many newer data access technologies from Microsoft available now (Entity Framework, for example), typed datasets are still useful when you’re interacting with data from non-MS SQL databases. I can easily throw my database tables onto the designer, let Visual Studio generate my table adapters, and get to coding.&lt;/p&gt;
+&lt;p&gt;However, I think anyone who’s ever worked with ADO.NET datasets has encountered this horrifying error message:&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;Failed to enable constraints. One or more rows contain values
+violating non-null, unique, or foreign-key constraints.&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;Great. Which constraints? Which records? If my in-memory dataset is holding 20,000+ records, am I really going to know where my problem is? Although you can sometimes figure it out if you’re in the middle of debugging, when this error occurs in production, you have no way of stepping into the problem and figuring out what went wrong.&lt;/p&gt;
+&lt;p&gt;You may not know it, but datatables actually contain a neat method called &lt;code&gt;GetErrors()&lt;/code&gt; which returns all rows that encountered an error. In addition, each tablerow contains a method &lt;code&gt;GetColumnsInError()&lt;/code&gt; which, well, return the columns that encountered the problem. These two methods can go a &lt;em&gt;long&lt;/em&gt; way towards helping you solve your problem.&lt;/p&gt;
+&lt;p&gt;After dealing with this problem for the N^th^ time and deciding to do something about it, I wrote an extension method that can be used to fill an arbitrary Table and, if any constraints are violated, throws a &lt;em&gt;detailed&lt;/em&gt; exception listing the errors:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+internal static class DataTableExtensionMethods
+{
+    /// &lt;summary&gt;
+    /// This extension method can be used in place of the standard &quot;GetData&quot;
+    /// method that is auto-generated in a strongly-typed data dapter.
+    /// It internally calls GetData, but checks for constraint errors and,
+    /// if they are found, throws a detailed exception
+    /// listing all of the errors instead of the default vague error message used
+    /// by ConstraintException.
+    /// &lt;/summary&gt;
+    /// &lt;typeparam name=&quot;TableType&quot;&gt;The type of the table that is expected
+    /// to be returned.&lt;/typeparam&gt;
+    /// &lt;param name=&quot;table&quot;&gt;A reference to the table that will hold the data.&lt;/param&gt;
+    /// &lt;param name=&quot;adapter&quot;&gt;The adapter that will be used to fill the table.&lt;/param&gt;
+    /// &lt;returns&gt;The same table as was given, but filled with the appropriate data.&lt;/returns&gt;
+    public static TableType GetDataSafely&lt;TableType&gt;(this TableType table, Component adapter)
+        where TableType : DataTable
+    {
+        if (table.DataSet == null)
+        {
+            throw new ArgumentException(@&quot;
+The table passed to the GetDataSafely method should not have a null DataSet.
+When calling GetDataSafely, be sure to pass in a table from a DataSet and
+don&apos;t use the table&apos;s constructor.&quot;, &quot;table&quot;);
+        }
+        table.DataSet.EnforceConstraints = false;
+        // Unfortunately, we have to use &apos;Component&apos; as the type for adapter
+        // since there is no better &apos;base type&apos; that adapter inherits from
+        // (if someone knows of something else, please let me know!)
+        // So, we can use C# 4&apos;s dynamic keyword to help us out here
+        // (Obviously, this code will crash if there is no Fill() method on adapter)
+        dynamic dynAdapter = adapter;
+        dynAdapter.Fill(table);
+        try
+        {
+            table.DataSet.EnforceConstraints = true;
+        }
+        catch (ConstraintException ex)
+        {
+            var errorQuery = table.GetErrors()
+                .SelectMany(x =&gt; x.GetColumnsInError().Select(
+                    c =&gt; x.GetColumnError(c) + &quot; (Value: &quot; + x[c] + &quot;)&quot;)
+                );
+            throw new DetailedConstraintException(
+                String.Join(Environment.NewLine, errorQuery), ex);
+        }
+        return table;
+    }
+}
+internal class DetailedConstraintException : ConstraintException
+{
+    public DetailedConstraintException(string constraintErrorMessage,
+        ConstraintException constraintException)
+        : base(constraintErrorMessage, constraintException)
+    { }
+}
+&lt;/pre&gt;
+&lt;p&gt;Here is an example of calling this method:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+var someData = new SomeDataSet().SomeTypedTable.GetDataSafely(
+new SomeTypedTableAdapter());
+&lt;/pre&gt;
+&lt;p&gt;This would be equivalent to the following, standard approach:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+var someData = new SomeDataSet().SomeTypedTable;
+var adapter = new SomeTypedTableAdapter();
+adapter.Fill(someData);
+&lt;/pre&gt;
+&lt;p&gt;And yes, I’m aware that this approach is even simpler, but it doesn’t work with the above safe method:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+var someData = new SomeTypedTableAdapter().GetData();
+&lt;/pre&gt;
+&lt;p&gt;The reason it doesn’t work is because we need the dataset to be created so that we can disable constraints before filling the datatable by calling:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+table.DataSet.EnforceConstraints = false;
+dynamic dynAdapter = adapter;
+dynAdapter.Fill(table);
+&lt;/pre&gt;
+&lt;p&gt;Then we enable constraints after the datatable has been filled:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+try
+{
+    table.DataSet.EnforceConstraints = true;
+}
+&lt;/pre&gt;
+&lt;p&gt;As soon as we set EnforceConstraints to true, all constraints are checked against every record in the table. If a ConstraintException is thrown, we can:&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Check for any error’d rows (table.GetErrors())&lt;/li&gt;
+&lt;li&gt;For each error’d row, get the violated columns (GetColumnsInError())&lt;/li&gt;
+&lt;li&gt;Finally, for each error’d row, get the specific error message per column (GetColumnError(column))&lt;/li&gt;
+&lt;/ol&gt;
+&lt;p&gt;We use LINQ here to make the process of iterating over all of these errors very simple; in the end, we’re left with an enumeration of string error messages. We can then pass these detailed error messages to an Exception and our debugging process will be much easier:&lt;/p&gt;
+&lt;pre class=&quot;brush: csharp;&quot;&gt;
+var errorQuery = table.GetErrors()
+    .SelectMany(x =&gt; x.GetColumnsInError()
+        .Select(c =&gt; x.GetColumnError(c) + &quot; (Value: &quot; + x[c] + &quot;)&quot;));
+&lt;/pre&gt;
+&lt;p&gt;Hope this helps someone!&lt;/p&gt;
+</content>
+  </entry>
+  
+</feed>

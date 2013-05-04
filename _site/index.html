@@ -1,0 +1,212 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta content="en-au" http-equiv="Content-Language" />
+		<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+		<link href="/rss.xml" type="application/rss+xml" rel="alternate" title="Blog Feed" />
+		<link href="/atom.xml" type="application/atom+xml" rel="alternate" title="Blog Feed" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+		<title>Dan Pincas</title>
+		<link rel="stylesheet" type="text/css" href="/css/mystyle.css" />
+		<link rel="shortcut icon" href="/img/favicon.ico" />
+		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.0.js"></script>
+		<link href="/css/shCore.css" rel="stylesheet" type="text/css" />
+		<link href="/css/shThemeRDark.css" rel="stylesheet" type="text/css" />
+		<script src="/js/shCore.js" type="text/javascript"></script>
+		<script src="/js/shAutoloader.js" type="text/javascript"></script>
+		<script type="text/javascript">
+			$(function() {
+				SyntaxHighlighter.autoloader(
+					"js jscript javascript              /js/shBrushJScript.js",
+					"cs csharp c-sharp                  /js/shBrushCSharp.js",
+					"xml xhtml xslt html xhtml          /js/shBrushXml.js",
+					"sql                                /js/shBrushSql.js",
+					"ps powershell shell                /js/shBrushPowerShell.js"
+				);
+				SyntaxHighlighter.all();
+			});
+		</script>
+	</head>
+	<body>
+		<div id="header">
+			<div id="headerContent">
+				<img id="logo" src="/img/dan.png" alt="Dan Pincas" />
+				<a href="/"><h3>a Pincas draws near! Command?</h3></a>
+				<nav id="headerNav">
+					<ul>
+						<li><a href="/"><img src="/img/blog.png" /><span>blog</span></a></li>
+						<li><a href="/about.html"><img src="/img/about.png" /><span>about</span></a></li>
+						<li><a href="/projects.html"><img src="/img/projects.png" /><span>projects</span></a></li>
+						<li><a href="/rss.xml"><img src="/img/rss.png" /><span>feed</span></a></li>
+					</ul>
+				</nav>
+			</div>
+		</div>
+		<div id="container">
+			<div id="content">
+				<ul class="posts">
+    
+		<li>
+			<div class="idea">
+				
+					<h1><a href="/2013/03/28/searching-with-solr-part-2.html">Searching with SOLR - Part 2</a></h1>
+					
+					<div class="postdate">28 March, 2013
+						<ul>
+						
+							<li><a href="/tag/solr">solr</a></li>
+						
+							<li><a href="/tag/lucene">lucene</a></li>
+						
+							<li><a href="/tag/search">search</a></li>
+						
+						</ul>
+					</div>
+					
+					<p>In the <a href="/blog/searching-with-solr-part-1">last post</a> I introduced Solr, explained why it was helpful over straight Lucene, and showed how to get it up and running with some example data.</p>
+<ul>
+<li><a href="http://danpincas.azurewebsites.net/blog/searching-with-solr-part-1">Part 1 (Background, installation)</a></li>
+<li>Part 2 (Custom schema, data import)</li>
+</ul>
+<p>In this p...
+					<br />
+					<a href="/2013/03/28/searching-with-solr-part-2.html#disqus_thread">Comments</a>
+				
+			</div>
+		</li>
+    
+		<li>
+			<div class="idea">
+				
+					<h2><a class="postlink" href="/2013/03/16/entity-framework-dealing-with-large-where-in-statements.html">Entity Framework - Dealing with large 'WHERE IN' statements</a></h2>
+					<div class="postdate">16 March, 2013
+						<ul>
+						
+							<li><a href="/tag/entityframework">entityframework</a></li>
+						
+							<li><a href="/tag/c#">c#</a></li>
+						
+							<li><a href="/tag/sql">sql</a></li>
+						
+							<li><a href="/tag/batches">batches</a></li>
+						
+						</ul>
+					</div>
+					<p>I just wanted to quickly blog about a technique that I found really useful recently. I was in a situation where I was passing a large (30,000+) number of ids from a web app (let's call it System A) to a console app (System B) using Message Queuing.</p>
+<p>When System B received the message, it needed to run a query against the database and load information related to each matching record. An...
+					
+					<a href="/2013/03/16/entity-framework-dealing-with-large-where-in-statements.html#disqus_thread">Comments</a>
+				
+			</div>
+		</li>
+    
+		<li>
+			<div class="idea">
+				
+					<h2><a class="postlink" href="/2013/03/03/searching-with-solr-part-1.html">Searching with SOLR - Part 1</a></h2>
+					<div class="postdate"> 3 March, 2013
+						<ul>
+						
+							<li><a href="/tag/solr">solr</a></li>
+						
+							<li><a href="/tag/lucene">lucene</a></li>
+						
+							<li><a href="/tag/search">search</a></li>
+						
+						</ul>
+					</div>
+					<p>In this series of blog posts, I'm going to walk through the process of getting up and running with using Apache Solr in ASP.NET MVC. This post, the first in the series, will offer background information and show how to get Solr installed.</p>
+<ul>
+<li>Part 1 (Background, installation)</li>
+<li><a href="http://danpincas.azurewebsites.net/blog/searching-with-solr-part-2">Part 2 (Custom schema,...
+					
+					<a href="/2013/03/03/searching-with-solr-part-1.html#disqus_thread">Comments</a>
+				
+			</div>
+		</li>
+    
+		<li>
+			<div class="idea">
+				
+					<h2><a class="postlink" href="/2011/04/16/combining-nuget-with-team-foundation-build.html">Combining NuGet with Team Foundation Build</a></h2>
+					<div class="postdate">16 April, 2011
+						<ul>
+						
+							<li><a href="/tag/.net">.net</a></li>
+						
+							<li><a href="/tag/deploying">deploying</a></li>
+						
+							<li><a href="/tag/nuget">nuget</a></li>
+						
+							<li><a href="/tag/tfs">tfs</a></li>
+						
+							<li><a href="/tag/continuous integration">continuous integration</a></li>
+						
+							<li><a href="/tag/source control">source control</a></li>
+						
+						</ul>
+					</div>
+					<p><strong>Update: This post refers to NuGet 1.2. Although the techniques described here are still valid, once NuGet 1.4 comes out, Dan Turner’s fork will no longer be necessary. Thus, please keep the date of this post in mind!</strong></p>
+<p>I’ve been experimenting with setting up a build server for our dev team at work. I didn’t run into any challenges until I configured the build agent.</p>...
+					
+					<a href="/2011/04/16/combining-nuget-with-team-foundation-build.html#disqus_thread">Comments</a>
+				
+			</div>
+		</li>
+    
+		<li>
+			<div class="idea">
+				
+					<h2><a class="postlink" href="/2011/04/09/configuring-your-dell-bios-remotely.html">Configuring Your Dell BIOS Remotely</a></h2>
+					<div class="postdate"> 9 April, 2011
+						<ul>
+						
+							<li><a href="/tag/bios">bios</a></li>
+						
+							<li><a href="/tag/remote">remote</a></li>
+						
+							<li><a href="/tag/windows">windows</a></li>
+						
+						</ul>
+					</div>
+					<p>This past weekend I had wanted to experiment with setting up Team Foundation Build on a VM, and I figured I’d do it at my leisure from the comfort of my home.</p>
+<p>After connecting via RDP to my office computer, I realized that I had forgotten to turn on <code>Hardware-Assisted Virtualization (HAV)</code> before leaving on Friday. Not a big deal, but annoying to think that my VM <a href="h...
+					
+					<a href="/2011/04/09/configuring-your-dell-bios-remotely.html#disqus_thread">Comments</a>
+				
+			</div>
+		</li>
+    
+</ul>
+<h3>OLDER</h3>
+<ul class="postArchive">
+
+	<li>
+		<span class="olderpostdate"> 03 Apr </span> <a class="postlink" href="/2011/04/03/deploying-oracle-applications-without-installing-oracle.html">Deploying Oracle Applications without Installing Oracle</a>
+	</li>
+
+	<li>
+		<span class="olderpostdate"> 28 Mar </span> <a class="postlink" href="/2011/03/28/taming-adonet-typed-datasets.html">Taming ADO.NET Typed Datasets</a>
+	</li>
+
+</ul>
+<p><script type="text/javascript">
+//&lt;![CDATA[
+(function() {
+    var links = document.getElementsByTagName('a');
+    var query = '?';
+    for(var i = 0; i &lt; links.length; i++) {
+    if(links[i].href.indexOf('#disqus_thread') &gt;= 0) {
+        query += 'url' + i + '=' + encodeURIComponent(links[i].href) + '&amp;';
+    }
+    }
+    document.write('<script charset="utf-8" type="text/javascript" src="http://disqus.com/forums/DISQUS_NAME/get_num_replies.js' + query + '">&lt;/' + 'script&gt;');
+})();
+//]]&gt;
+</script></p>
+
+			</div>
+
+		</div>
+	</body>
+</html>

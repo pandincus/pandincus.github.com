@@ -1,0 +1,147 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta content="en-au" http-equiv="Content-Language" />
+		<meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+		<link href="/rss.xml" type="application/rss+xml" rel="alternate" title="Blog Feed" />
+		<link href="/atom.xml" type="application/atom+xml" rel="alternate" title="Blog Feed" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+		<title>Entity Framework - Dealing with large 'WHERE IN' statements</title>
+		<link rel="stylesheet" type="text/css" href="/css/mystyle.css" />
+		<link rel="shortcut icon" href="/img/favicon.ico" />
+		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.0.js"></script>
+		<link href="/css/shCore.css" rel="stylesheet" type="text/css" />
+		<link href="/css/shThemeRDark.css" rel="stylesheet" type="text/css" />
+		<script src="/js/shCore.js" type="text/javascript"></script>
+		<script src="/js/shAutoloader.js" type="text/javascript"></script>
+		<script type="text/javascript">
+			$(function() {
+				SyntaxHighlighter.autoloader(
+					"js jscript javascript              /js/shBrushJScript.js",
+					"cs csharp c-sharp                  /js/shBrushCSharp.js",
+					"xml xhtml xslt html xhtml          /js/shBrushXml.js",
+					"sql                                /js/shBrushSql.js",
+					"ps powershell shell                /js/shBrushPowerShell.js"
+				);
+				SyntaxHighlighter.all();
+			});
+		</script>
+	</head>
+	<body>
+		<div id="header">
+			<div id="headerContent">
+				<img id="logo" src="/img/dan.png" alt="Dan Pincas" />
+				<h3>a Pincas draws near! Command?</h3>
+				<nav id="headerNav">
+					<ul>
+						<li><a href="/"><img src="/img/blog.png" /><span>blog</span></a></li>
+						<li><a href="/about.html"><img src="/img/about.png" /><span>about</span></a></li>
+						<li><a href="/projects.html"><img src="/img/projects.png" /><span>projects</span></a></li>
+						<li><a href="/rss.xml"><img src="/img/rss.png" /><span>feed</span></a></li>
+					</ul>
+				</nav>
+			</div>
+		</div>
+		<div id="container">
+			<div id="content">
+				<div class="entry-container">
+	<div class='entry'>
+		<h1> Entity Framework - Dealing with large 'WHERE IN' statements </h1>
+		<span class="postdate">
+			
+				<li><a href="/tag/entityframework">entityframework</a></li>
+			
+				<li><a href="/tag/c#">c#</a></li>
+			
+				<li><a href="/tag/sql">sql</a></li>
+			
+				<li><a href="/tag/batches">batches</a></li>
+			
+		</span>
+		<p>I just wanted to quickly blog about a technique that I found really useful recently. I was in a situation where I was passing a large (30,000+) number of ids from a web app (let's call it System A) to a console app (System B) using Message Queuing.</p>
+<p>When System B received the message, it needed to run a query against the database and load information related to each matching record. An easy way to do this in Entity Framework is something like:</p>
+<pre class="brush: csharp;">
+public void DoStuffWithIds(List<int> ids)
+{
+    var context = new MyDatabaseContext();
+    // Get the matching records, pull them into a list
+    var records = new List<Record>();
+    records = context.Records.Where(x => ids.Contains(x.Id)).ToList();
+    // ...do other stuff
+}
+</pre>
+<p>Simple, right? OK, but as you may imagine, this translates into a query like the following:</p>
+<pre class="brush: sql;">
+SELECT *
+FROM Records r
+WHERE r.Id IN (123, 124, 125, ... 1999, 2000, 2001, ... )
+</pre>
+<p>So what? Well, apparently there's a limit on how long those WHERE ... IN statements can be. Eventually you'll hit a wall and receive an error message like:</p>
+<blockquote>
+<p>(put error message here)</p>
+</blockquote>
+<p>When you get to this point in your code, you have to get slightly creative. Marc Gravell has <a href="http://stackoverflow.com/a/5052187/2273">an excellent post on Stack Overflow</a> where he outlines a basic solution:</p>
+<blockquote>
+<p>For data volumes like 300k rows, I would forget EF. I would do this by having a table such as:
+BatchId  RowId
+Where RowId is the PK of the row we want to update, and BatchId just refers to this &quot;run&quot; of 300k rows (to allow multiple at once etc).
+I would generate a new BatchId (this could be anything unique -Guid leaps to mind), and use SqlBulkCopy to insert te records onto this table.</p>
+</blockquote>
+<p>In my case, my range of ids wasn't going to approach anywhere near 300k, so I didn't have to use SqlBulkCopy, but I did like the idea of a temporary batch table. After all, in my experience the performance of a JOIN is loads better than a WHERE ... IN clause.</p>
+<p>A sample solution using this method:</p>
+<pre class="brush: csharp;">
+public IEnumerable<Record> PerformBatchJoinWithIds(IEnumerable<int> ids)
+{
+    var context = GetContext<MyDatabaseContext>();
+    // Disable auto detection of changes; much faster for batch edits/inserts
+    context.Configuration.AutoDetectChangesEnabled = false;
+    // A GUID will keep track of this batch operation
+    var uniqueId = Guid.NewGuid();
+    // Insert the batchquery objects for each id
+    foreach (var id in ids)
+    {
+        context.BatchQueries.Add(new BatchQuery { Id = uniqueId, IdToQuery = id });
+    }
+    // Detect all changes in one shot and then save them
+    context.ChangeTracker.DetectChanges();
+    context.SaveChanges();
+    // Now we can re-enable auto detection of changes (in case we use this context elsewhere)
+    context.Configuration.AutoDetectChangesEnabled = true;
+    // Join the batch queries table with the records we're trying to get
+    var entities = context.Records.Join(context.BatchQueries, x => x.Id, y => y.IdToQuery, (x, y) => x)
+        .ToList();
+    // Finally, we can delete all of the BatchQuery records matching the GUID
+    context.Database.ExecuteSqlCommand("DELETE FROM BatchQueries WHERE ID = {0}", uniqueId);
+    return entities;
+}
+</pre>
+	</div>
+</div>
+<div id="page-navigation"> 
+	<div class="left">  </div> 
+	<div class="right">  </div> 
+	<div class="clear">&nbsp;</div>
+</div> 
+
+
+
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
+    var disqus_shortname = 'NAME'; // required: replace example with your forum shortname
+
+    /* * * DON'T EDIT BELOW THIS LINE * * */
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+<a href="http://disqus.com" class="dsq-brlink">blog comments powered by <span class="logo-disqus">Disqus</span></a>
+
+			</div>
+
+		</div>
+	</body>
+</html>
