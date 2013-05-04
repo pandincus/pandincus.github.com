@@ -124,6 +124,10 @@ h2
 { 
 	font-size: 2em;
 }
+h3
+{
+	font-size: 1.25em;
+}
 a, a:visited 
 { 
 	text-decoration: none; 
@@ -184,6 +188,9 @@ blockquote {
 	padding-left: 1em;
 	border-left: 3px solid #ccc;
 } 
+table.flair td {
+	vertical-align: top;
+}
 
 /* min-device-width: 800px instead? */
 @media screen and (max-width:900px)

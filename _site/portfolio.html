@@ -6,7 +6,7 @@
 		<link href="/rss.xml" type="application/rss+xml" rel="alternate" title="Blog Feed" />
 		<link href="/atom.xml" type="application/atom+xml" rel="alternate" title="Blog Feed" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-		<title>About</title>
+		<title>Portfolio</title>
 		<link rel="stylesheet" type="text/css" href="/css/mystyle.css" />
 		<link rel="shortcut icon" href="/img/favicon.ico" />
 		<script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.0.js"></script>
@@ -48,17 +48,25 @@
 			<div id="content">
 				<div class="entry-container">
 	<div class='entry'>
-		<h1> About </h1>
+		<h1> Portfolio </h1>
 		<span class="postdate">
 			
 		</span>
-		<p>Hi! My name is Dan Pincas and I'm a professional software developer. I try to learn a couple new tricks every day; this blog is a place where I can record my thoughts and share what I've learned.</p>
-<p>Here's some flair:</p>
-<table class="flair">
-    <td><a href="http://stackoverflow.com/users/2273/pandincus"> <img src="http://stackoverflow.com/users/flair/2273.png?theme=dark" width="208" height="58" alt="profile for Pandincus at Stack Overflow, Q&amp;A for professional and enthusiast programmers" title="profile for Pandincus at Stack Overflow, Q&amp;A for professional and enthusiast programmers" /> </a></td>
-    <td><a href="http://live.xbox.com/en-US/MyXbox/Profile?gamertag=pandincus"><img src="http://www.xboxgamertag.com/gamercard/pandincus/newnxe/card.png" alt="pandincus's Gamercard" title="pandincus's Gamercard" border="0/" /></a></td>
-    <td><iframe src="http://www.codility.com//cert/badge/cert9T93VJ-727C5M7V8M3XG8G8/" width="125" height="75"> &amp;lt;a href="http://www.codility.com//cert/view/cert9T93VJ-727C5M7V8M3XG8G8/" data-mce-href="http://www.codility.com//cert/view/cert9T93VJ-727C5M7V8M3XG8G8/"&amp;gt;Codility badge&amp;lt;/a&amp;gt; </iframe></td>
-</table>
+		<p>Here is an overview of some of the projects I've worked on. Thanks for stopping by!</p>
+<h2>E-RAS - Electronic Record of Authorized Signatures</h2>
+<p>This app is a multi-tenant account repository that stores information about financial accounts. Users can only see/edit the accounts they have access to. The app was built in C# 4 using the ASP.NET MVC 3 framework. I used Lucene.NET to full-text index all searchable data, and RabbitMQ to send messages from the web app to and from the Lucene index.</p>
+<iframe width="560" height="315" src="http://www.youtube.com/embed/hggiplu92Xk?rel=0&cc_load_policy=1" frameborder="0" allowfullscreen></iframe>
+<hr />
+<h2>&quot;Starter Site&quot; NuGet Package for ASP.NET MVC</h2>
+<p>Information coming soon!</p>
+<hr />
+<h2>GTIS - Green Transit Information System</h2>
+<p>This was an extremely fun and challenging project to work on involving a bunch of different technologies. The chief requirement was collecting information on which groups of the campus community were using our campus bus service. For example, did staff use our bus service, or was it mostly students? Graduate or undergraduate? Where were they boarding the bus? To accomplish this, we developed a C# / WPF application running on a laptop that would be installed in the bus. This application used a card reader to obtain information from an individual's University ID card, and a GPS adapter to determine the location.</p>
+<p>A second requirement, to provide a service to the campus community, was to display information about the route such as the next and upcoming stops. Our app also announced when the bus was arriving at a stop, and what the next stop was.</p>
+<p>Here's a brief video showing a prototype of the app:</p>
+<iframe width="420" height="315" src="http://www.youtube.com/embed/0fw5ha1hYEM?rel=0&cc_load_policy=1" frameborder="0" allowfullscreen></iframe>
+<p>Unfortunately, the app never went live due to changing goals and a reallocation of resources. This project became what is now the <a href="http://smarttransit.cewit.stonybrook.edu/smarttransit/">SBU Smart Transit System</a>. Even though this app didn't go live, building it was extremely rewarding and I learned a lot about threading, WPF, unit testing, and coding in general.</p>
+
 	</div>
 </div>
 <div id="page-navigation"> 
