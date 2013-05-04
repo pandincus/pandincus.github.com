@@ -9,7 +9,7 @@ tags:
 - windows
 ---
 
-This past weekend I had wanted to experiment with setting up Team Foundation Build on a VM, and I figured I’d do it at my leisure from the comfort of my home.
+This past weekend I wanted to experiment with setting up Team Foundation Build on a VM, and I figured I’d do it at my leisure from the comfort of my home.
 
 After connecting via RDP to my office computer, I realized that I had forgotten to turn on `Hardware-Assisted Virtualization (HAV)` before leaving on Friday. Not a big deal, but annoying to think that my VM [could be working 10-30% faster][1], and that all I’d had to do was change a setting in the BIOS.
 
