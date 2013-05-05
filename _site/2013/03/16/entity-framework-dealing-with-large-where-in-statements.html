@@ -50,16 +50,16 @@
 					<div class="entry-container">
 	<div class='entry'>
 		<h1> Entity Framework - Dealing with large 'WHERE IN' statements </h1>
-		<span class="postdate">
-			
-				<li><a href="/tag/entityframework">entityframework</a></li>
-			
-				<li><a href="/tag/c#">c#</a></li>
-			
-				<li><a href="/tag/sql">sql</a></li>
-			
-				<li><a href="/tag/batches">batches</a></li>
-			
+		<span class="subtitle"><strong></strong> filed under
+            
+               <a href="/tag/entityframework">entityframework</a>, 
+            
+               <a href="/tag/c#">c#</a>, 
+            
+               <a href="/tag/sql">sql</a>, 
+            
+               <a href="/tag/batches">batches</a>
+            
 		</span>
 		<p>I just wanted to quickly blog about a technique that I found really useful recently. I was in a situation where I was passing a large (30,000+) number of ids from a web app (let's call it System A) to a console app (System B) using Message Queuing.</p>
 <p>When System B received the message, it needed to run a query against the database and load information related to each matching record. An easy way to do this in Entity Framework is something like:</p>

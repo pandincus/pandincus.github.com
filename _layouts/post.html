@@ -5,10 +5,10 @@ layout: mylayout
 <div class="entry-container">
 	<div class='entry'>
 		<h1> {{page.title}} </h1>
-		<span class="postdate">{{ page.date | date: "%e %B, %Y"  }}
-			{% for tag in page.tags %}
-				<li><a href="/tag/{{ tag }}">{{ tag }}</a></li>
-			{% endfor %}
+		<span class="subtitle"><strong>{{ page.date | date: "%e %B, %Y"  }}</strong> filed under
+            {% for tag in page.tags %}
+               <a href="/tag/{{ tag }}">{{ tag }}</a>{% if forloop.rindex0 > 0 %}, {% endif %}
+            {% endfor %}
 		</span>
 		{{ content }}
 	</div>
