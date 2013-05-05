@@ -15,11 +15,11 @@ I just wanted to quickly blog about a technique that I found really useful recen
 When System B received the message, it needed to run a query against the database and load information related to each matching record. An easy way to do this in Entity Framework is something like:
 
 <pre class="brush: csharp;">
-public void DoStuffWithIds(List<int> ids)
+public void DoStuffWithIds(List&lt;int> ids)
 {
     var context = new MyDatabaseContext();
     // Get the matching records, pull them into a list
-    var records = new List<Record>();
+    var records = new List&lt;Record>();
     records = context.Records.Where(x => ids.Contains(x.Id)).ToList();
     // ...do other stuff
 }
@@ -49,9 +49,9 @@ In my case, my range of ids wasn't going to approach anywhere near 300k, so I di
 A sample solution using this method:
 
 <pre class="brush: csharp;">
-public IEnumerable<Record> PerformBatchJoinWithIds(IEnumerable<int> ids)
+public IEnumerable&lt;Record> PerformBatchJoinWithIds(IEnumerable&lt;int> ids)
 {
-    var context = GetContext<MyDatabaseContext>();
+    var context = GetContext&lt;MyDatabaseContext>();
     // Disable auto detection of changes; much faster for batch edits/inserts
     context.Configuration.AutoDetectChangesEnabled = false;
     // A GUID will keep track of this batch operation
