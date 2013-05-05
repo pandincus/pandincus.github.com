@@ -4,48 +4,21 @@ title : Dan Pincas
 ---
 
 <ul class="posts">
-    {% for post in site.posts  limit:5 %}
+    {% for post in site.posts %}
 		<li>
 			<div class="idea">
-				{% if forloop.first and post.layout == "post" %}
-					<h1><a href="{{ post.url }}">{{ post.title }}</a></h1>
-					
-					<div class="postdate">{{ post.date | date: "%e %B, %Y"  }}
-						<ul>
-						{% for tag in post.tags %}
-							<li><a href="/tag/{{ tag }}">{{ tag }}</a></li>
-						{% endfor %}
-						</ul>
-					</div>
-					
-					{{ post.content | truncate: 400 }}
-					<br />
-					<a href="{{ post.url}}#disqus_thread">Comments</a>
-				{% else %}
-					<h2><a class="postlink" href="{{ post.url }}">{{ post.title }}</a></h2>
-					<div class="postdate">{{ post.date | date: "%e %B, %Y"  }}
-						<ul>
-						{% for tag in post.tags %}
-							<li><a href="/tag/{{ tag }}">{{ tag }}</a></li>
-						{% endfor %}
-						</ul>
-					</div>
-					{{ post.content | truncate: 400 }}
-					
-					<a href="{{ post.url }}#disqus_thread">Comments</a>
-				{% endif %}
+				<h2><a class="postlink" href="{{ post.url }}">{{ post.title }}</a></h2>
+				<span class="subtitle"><strong>{{ post.date | date: "%e %B, %Y"  }}</strong> filed under
+					{% for tag in post.tags %}
+					   <a href="/tag/{{ tag }}">{{ tag }}</a>{% if forloop.rindex0 > 0 %}, {% endif %}
+					{% endfor %}
+                </span>
+                <div class="postpreview">
+                    {{ post.content | strip_html | truncate: 300 }}<a href="{{ post.url }}">view more</a>
+                </div>
 			</div>
 		</li>
     {% endfor %}
-</ul>
-
-<h3>OLDER</h3>
-<ul class="postArchive">
-{% for post in site.posts offset:5 %}
-	<li>
-		<span class="olderpostdate"> {{ post.date | date: "%d %b"  }} </span> <a class="postlink" href="{{ post.url }}">{{ post.title }}</a>
-	</li>
-{% endfor %}
 </ul>
 
 <script type="text/javascript">
