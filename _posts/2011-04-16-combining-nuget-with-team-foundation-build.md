@@ -18,7 +18,7 @@ I’ve been experimenting with setting up a build server for our dev team at wor
 
 When I initiated a test build for one of our apps, it failed with a bunch of these:
 
-> Could not resolve this reference. Could not locate the assembly “<assembly>”. Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
+> Could not resolve this reference. Could not locate the assembly “&lt;assembly>”. Check to make sure the assembly exists on disk. If this reference is required by your code, you may get compilation errors.
 
 D’oh! Of course, **my build agent had no idea where to find my project’s external references**.
 
@@ -78,9 +78,9 @@ Now let’s add, for example, Ninject v 2.2.1.0:
 * The **packages.config** file exists once per project, and it lists any NuGet packages that are in use for that project (it also includes the version #):
 
 <pre class="brush: xml;">
-<packages>
-  <package id="Ninject" version="2.2.1.0" />
-</packages>
+&lt;packages>
+  &lt;package id="Ninject" version="2.2.1.0" />
+&lt;/packages>
 </pre>
 
 * The **repositories.config** file just points to each **packages.config** file for the solution.
@@ -88,9 +88,9 @@ Now let’s add, for example, Ninject v 2.2.1.0:
 * The **MyProject.csproj** file is changed to add the actual assembly to your project:
 
 <pre class="brush: xml;">
-<Reference Include="Ninject">
-    <HintPath>..\packages\Ninject.2.2.1.0\lib\.NetFramework 4.0\Ninject.dll</HintPath>
-</Reference>
+&lt;Reference Include="Ninject">
+    &lt;HintPath>..\packages\Ninject.2.2.1.0\lib\.NetFramework 4.0\Ninject.dll&lt;/HintPath>
+&lt;/Reference>
 </pre>
 
 We can leverage the [command line NuGet.exe program][9] to download NuGet packages from the online repository to the local **packages\\** folder, just by pointing it at our **packages.config** file! Here’s the plan:

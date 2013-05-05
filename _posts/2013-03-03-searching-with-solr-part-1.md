@@ -104,28 +104,28 @@ You'll see the following output:
 Looks like some files were indexed! To check them out, direct your web browser to <http://localhost:8983/solr/#/collection1/query> and click **Execute Query**. You'll see a response, in XML, that includes a bunch of information, including some documents! For example, here's a 500GB SATA hard drive:
 
 <pre class="brush: xml;">
-    <doc>
-        <str name="id">6H500F0</str>
-        <str name="name">Maxtor DiamondMax 11 - hard drive - 500 GB - SATA-300</str>
-        <str name="manu">Maxtor Corp.</str>
-        <str name="manu_id_s">maxtor</str>
-        <arr name="cat">
-          <str>electronics</str>
-          <str>hard drive</str>
-        </arr>
-        <arr name="features">
-          <str>SATA 3.0Gb/s, NCQ</str>
-          <str>8.5ms seek</str>
-          <str>16MB cache</str>
-        </arr>
-        <float name="price">350.0</float>
-        <str name="price_c">350,USD</str>
-        <int name="popularity">6</int>
-        <bool name="inStock">true</bool>
-        <str name="store">45.17614,-93.87341</str>
-        <date name="manufacturedate_dt">2006-02-13T15:26:37Z</date>
-        <long name="_version_">1428538688513507328</long>
-    </doc>
+    &lt;doc>
+        &lt;str name="id">6H500F0&lt;/str>
+        &lt;str name="name">Maxtor DiamondMax 11 - hard drive - 500 GB - SATA-300&lt;/str>
+        &lt;str name="manu">Maxtor Corp.&lt;/str>
+        &lt;str name="manu_id_s">maxtor&lt;/str>
+        &lt;arr name="cat">
+          &lt;str>electronics&lt;/str>
+          &lt;str>hard drive&lt;/str>
+        &lt;/arr>
+        &lt;arr name="features">
+          &lt;str>SATA 3.0Gb/s, NCQ&lt;/str>
+          &lt;str>8.5ms seek&lt;/str>
+          &lt;str>16MB cache&lt;/str>
+        &lt;/arr>
+        &lt;float name="price">350.0&lt;/float>
+        &lt;str name="price_c">350,USD&lt;/str>
+        &lt;int name="popularity">6&lt;/int>
+        &lt;bool name="inStock">true&lt;/bool>
+        &lt;str name="store">45.17614,-93.87341&lt;/str>
+        &lt;date name="manufacturedate_dt">2006-02-13T15:26:37Z&lt;/date>
+        &lt;long name="_version_">1428538688513507328&lt;/long>
+    &lt;/doc>
 </pre>
 
 As you can see from the sample doc, Solr supports many different field types, such as strings, floats, and ints. Let's try a query similar to the one we discussed at the beginning of this blog post. On the query page, in the field that is labeled **q**, type '500 gb sata' and hit 'Execute Query':

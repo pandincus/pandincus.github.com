@@ -26,20 +26,20 @@ After dealing with this problem for the N^th^ time and deciding to do something 
 <pre class="brush: csharp;">
 internal static class DataTableExtensionMethods
 {
-    /// <summary>
+    /// &lt;summary>
     /// This extension method can be used in place of the standard "GetData"
     /// method that is auto-generated in a strongly-typed data dapter.
     /// It internally calls GetData, but checks for constraint errors and,
     /// if they are found, throws a detailed exception
     /// listing all of the errors instead of the default vague error message used
     /// by ConstraintException.
-    /// </summary>
-    /// <typeparam name="TableType">The type of the table that is expected
-    /// to be returned.</typeparam>
-    /// <param name="table">A reference to the table that will hold the data.</param>
-    /// <param name="adapter">The adapter that will be used to fill the table.</param>
-    /// <returns>The same table as was given, but filled with the appropriate data.</returns>
-    public static TableType GetDataSafely<TableType>(this TableType table, Component adapter)
+    /// &lt;/summary>
+    /// &lt;typeparam name="TableType">The type of the table that is expected
+    /// to be returned.&lt;/typeparam>
+    /// &lt;param name="table">A reference to the table that will hold the data.&lt;/param>
+    /// &lt;param name="adapter">The adapter that will be used to fill the table.&lt;/param>
+    /// &lt;returns>The same table as was given, but filled with the appropriate data.&lt;/returns>
+    public static TableType GetDataSafely&lt;TableType>(this TableType table, Component adapter)
         where TableType : DataTable
     {
         if (table.DataSet == null)
