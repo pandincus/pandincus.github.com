@@ -118,7 +118,7 @@ RMDIR /s /Q multicore
 <h2>Schema Configuration</h2>
 <p>First, rename the schema. (This is only for display purposes, but hey, let's be neat ;-)</p>
 <pre class="brush: xml">
-<schema name="adventureworks_products" version="1.5">
+&lt;schema name="adventureworks_products" version="1.5">
 </pre>
 <p>If you scroll down, the next thing you'll notice is all of the fields. By default, you'll see fields like id, sku, name, manu (manufacturer), cat (category), and more. All of these fields have different types. All of these types actually roll up to Java classes and/or primitives, such as <code>String</code>, <code>int</code> and <code>boolean</code>. A <code>string</code> type is plain text, great for text that should be indexed as-is and left alone. This is especially useful if the user won't be 'searching' on that field, but instead selecting it from a list (e.g. product categories). The <code>text_general</code>, <code>text_en</code>, <code>text_en_splitting</code>, and <code>text_en_splitting_tight</code> field types are all great for text that will be searched, but with varying options depending on the kind of text. For example, the <strong>schema.xml</strong> comments describe <code>text_en</code> as:</p>
 <blockquote>
@@ -136,57 +136,57 @@ but may be good for SKUs.  Can insert dashes in the wrong place and still match.
 <p>This sounds ideal for the Product Number. You can learn about all of the field types by reading the comments in the <code>&lt;types&gt;</code> section of <strong>schema.xml</strong>. Note that there's nothing special about these fields, per se -- they all roll up to the Java class <code>solr.TextField</code>. However, it's the different tokenizers and filters applied to them that makes the difference. For example, do we convert the string to lowercase before indexing it? Do we 'stem' words so that words like 'housing' and 'purchasing' become 'house' and 'purchase'? How do we know when to split a string into 'words', anyway? (What counts as a delimiter) It's worth spending some time in <strong>schema.xml</strong> and examining the different field types and their properties.</p>
 <p>Let's use the following field definitions for our products data set:</p>
 <pre class="brush: xml">
-<field name="id" type="string" indexed="true" stored="true" required="true"></field>
-<field name="product_number" type="text_en_splitting_tight" indexed="true" stored="true" omitNorms="true"></field>
-<field name="model_name" type="text_en" indexed="true" stored="true" omitNorms="true"></field>
-<field name="name" type="text_en" indexed="true" stored="true"></field>
-<field name="product_description" type="text_en" indexed="true" stored="true"></field>
-<field name="product_category" type="string" indexed="true" stored="true"></field>
-<field name="product_subcategory" type="string" indexed="true" stored="true"></field>
+&lt;field name="id" type="string" indexed="true" stored="true" required="true" /&gt;
+&lt;field name="product_number" type="text_en_splitting_tight" indexed="true" stored="true" omitNorms="true" /&gt;
+&lt;field name="model_name" type="text_en" indexed="true" stored="true" omitNorms="true" /&gt;
+&lt;field name="name" type="text_en" indexed="true" stored="true" /&gt;
+&lt;field name="product_description" type="text_en" indexed="true" stored="true" /&gt;
+&lt;field name="product_category" type="string" indexed="true" stored="true" /&gt;
+&lt;field name="product_subcategory" type="string" indexed="true" stored="true" /&gt;
 </pre>
 <p>Leave all of the other fields (after the first batch of fields) alone (e.g. the common metadata fields).</p>
 <p>Now scroll down to where you see several <code>&lt;copyField&gt;</code> tags. Copyfield commands are useful when you want to simplify your search query by only searching one field for a variety of different types of data. It's also useful when you want to index one field multiple ways. Replace the first batch of copy fields with the following:</p>
 <pre class="brush: xml">
-<copyField source="name" dest="text"></copyField>
-<copyField source="product_number" dest="text"></copyField>
-<copyField source="product_description" dest="text"></copyField>
-<copyField source="model_name" dest="text"></copyField>
+&lt;copyField source="name" dest="text" /&gt;
+&lt;copyField source="product_number" dest="text" /&gt;
+&lt;copyField source="product_description" dest="text" /&gt;
+&lt;copyField source="model_name" dest="text" /&gt;
 </pre>
 <p>And that's it for modifying the schema! Now, let's tell Solr how to query AdventureWorks and index our data.</p>
 <h2>Data Import Handler</h2>
 <p>Solr uses something called a Data Import Handler (DIH) to run batch imports from an external data source. To get started configuring one, you need a data configuration file. Go to <strong>c:\solr\adventureworks\solr\products\conf</strong> and create a file named <strong>data-config.xml</strong>. Put this in the file:</p>
 <pre class="brush: xml">
-<dataConfig>  
-  <dataSource type="JdbcDataSource" name="ds1"
+&lt;dataConfig&gt;  
+  &lt;dataSource type="JdbcDataSource" name="ds1"
         driver="com.microsoft.sqlserver.jdbc.SQLServerDriver"
         url="jdbc:sqlserver://localhost;databaseName=AdventureWorks2008R2"
-        user="<<SQL USERNAME>>"
-        password="<<SQL PASSWORD>>"></dataSource>
-  <document>
-    <entity name="data" dataSource="ds1" pk="key"
-    query="SELECT p.ProductID, p.Name, p.ProductNumber, pm.Name AS ModelName, pd.[Description], pc.Name AS CategoryName, ps.Name AS SubcategoryName FROM Production.Product p INNER JOIN Production.ProductSubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID INNER JOIN Production.ProductCategory pc ON ps.ProductCategoryID = pc.ProductCategoryID INNER JOIN Production.ProductModel pm ON pm.ProductModelID = p.ProductModelID INNER JOIN Production.ProductModelProductDescriptionCulture pmpdc ON pm.ProductModelID = pmpdc.ProductModelID INNER JOIN Production.Culture c ON pmpdc.CultureID = c.CultureID INNER JOIN Production.ProductDescription pd ON pmpdc.ProductDescriptionID = pd.ProductDescriptionID WHERE c.Name = 'English'">
-      <field column="ProductID" name="id"></field>
-      <field column="ProductNumber" name="product_number"></field>
-      <field column="ModelName" name="model_name"></field>
-      <field column="Description" name="product_description"></field>
-      <field column="CategoryName" name="product_category"></field>
-      <field column="SubcategoryName" name="product_subcategory"></field>
-    </entity>
-  </document>
-</dataConfig>
+        user="SQL USERNAME"
+        password="SQL PASSWORD" /&gt;
+  &lt;document&gt;
+    &lt;entity name="data" dataSource="ds1" pk="key"
+    query="SELECT p.ProductID, p.Name, p.ProductNumber, pm.Name AS ModelName, pd.[Description], pc.Name AS CategoryName, ps.Name AS SubcategoryName FROM Production.Product p INNER JOIN Production.ProductSubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID INNER JOIN Production.ProductCategory pc ON ps.ProductCategoryID = pc.ProductCategoryID INNER JOIN Production.ProductModel pm ON pm.ProductModelID = p.ProductModelID INNER JOIN Production.ProductModelProductDescriptionCulture pmpdc ON pm.ProductModelID = pmpdc.ProductModelID INNER JOIN Production.Culture c ON pmpdc.CultureID = c.CultureID INNER JOIN Production.ProductDescription pd ON pmpdc.ProductDescriptionID = pd.ProductDescriptionID WHERE c.Name = 'English'"&gt;
+      &lt;field column="ProductID" name="id" /&gt;
+      &lt;field column="ProductNumber" name="product_number" /&gt;
+      &lt;field column="ModelName" name="model_name" /&gt;
+      &lt;field column="Description" name="product_description" /&gt;
+      &lt;field column="CategoryName" name="product_category" /&gt;
+      &lt;field column="SubcategoryName" name="product_subcategory" /&gt;
+    &lt;/entity&gt;
+  &lt;/document&gt;
+&lt;/dataConfig&gt;
 </pre>
 <p>The contents of this file are fairly self-explanatory: we first describe a data source, specifying its driver, url, username, password, and then describe the query that is associated with that data source. A query is represented by a <code>&lt;document&gt;</code> tag, meaning each result from this query will go into one Lucene document. Inside the query we specify the fields that we care about and associate them to the Solr fields in our <strong>schema.xml</strong> file.</p>
 <p>Now, we have to tell solr that we want to use a data import handler with this configuration file. Open up your <strong>solrconfig.xml</strong> file (should be located in <strong>c:\solr\adventureworks\solr\products\conf\solrconfig.xml</strong>) and, anywhere in the request handlers section, add the following:</p>
 <pre class="brush: xml">
-<requestHandler name="/dataimport" class="org.apache.solr.handler.dataimport.DataImportHandler">
-  <lst name="defaults">
-    <str name="config">data-config.xml</str>
-  </lst>
-</requestHandler>
+&lt;requestHandler name="/dataimport" class="org.apache.solr.handler.dataimport.DataImportHandler"&gt;
+  &lt;lst name="defaults"&gt;
+    &lt;str name="config"&gt;data-config.xml&lt;/str&gt;
+  &lt;/lst&gt;
+&lt;/requestHandler&gt;
 </pre>
 <p>Then, near the top of this file, tell Solr to load the libraries that deal with data import:</p>
 <pre class="brush: xml">
-<lib dir="../../../dist/" regex="solr-dataimporthandler-.*\.jar"></lib>
+&lt;lib dir="../../../dist/" regex="solr-dataimporthandler-.*\.jar"&gt;&lt;/lib&gt;
 </pre>
 <p>Almost done! We just need to tell Solr about our driver, which in this case is the Microsoft-provided JDBC--&gt;SQL Server driver. To have Solr load this driver, <a href="http://msdn.microsoft.com/en-us/sqlserver/aa937724.aspx">download it</a> and, after installation, copy the <strong>sqljdbc4.jar</strong> file to *<em>c:\solr\adventureworks\solr\products\lib*</em>. (If no <strong>lib</strong> folder exists, create one)</p>
 <p>Now, start Solr:</p>
@@ -230,7 +230,7 @@ e&indent=true&commit=true&verbose=false&command=full-import&debug=false&wt=json}
 <div id="disqus_thread"></div>
 <script type="text/javascript">
     /* * * CONFIGURATION VARIABLES: EDIT BEFORE PASTING INTO YOUR WEBPAGE * * */
-    var disqus_shortname = 'NAME'; // required: replace example with your forum shortname
+    var disqus_shortname = 'pandincus'; // required: replace example with your forum shortname
 
     /* * * DON'T EDIT BELOW THIS LINE * * */
     (function() {

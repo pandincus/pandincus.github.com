@@ -3,7 +3,7 @@
   <title>Feed Name</title>
   <link href="http://domain/"/>
   <link type="application/atom+xml" rel="self" href="http://domain/atom.xml"/>
-  <updated>5/4/2013 10:58:01 PM</updated>
+  <updated>5/4/2013 11:31:21 PM</updated>
   <id>http://domain/</id>
   <author>
     <name>Author</name>
@@ -79,7 +79,7 @@ RMDIR /s /Q multicore
 &lt;h2&gt;Schema Configuration&lt;/h2&gt;
 &lt;p&gt;First, rename the schema. (This is only for display purposes, but hey, let&apos;s be neat ;-)&lt;/p&gt;
 &lt;pre class=&quot;brush: xml&quot;&gt;
-&lt;schema name=&quot;adventureworks_products&quot; version=&quot;1.5&quot;&gt;
+&amp;lt;schema name=&quot;adventureworks_products&quot; version=&quot;1.5&quot;&gt;
 &lt;/pre&gt;
 &lt;p&gt;If you scroll down, the next thing you&apos;ll notice is all of the fields. By default, you&apos;ll see fields like id, sku, name, manu (manufacturer), cat (category), and more. All of these fields have different types. All of these types actually roll up to Java classes and/or primitives, such as &lt;code&gt;String&lt;/code&gt;, &lt;code&gt;int&lt;/code&gt; and &lt;code&gt;boolean&lt;/code&gt;. A &lt;code&gt;string&lt;/code&gt; type is plain text, great for text that should be indexed as-is and left alone. This is especially useful if the user won&apos;t be &apos;searching&apos; on that field, but instead selecting it from a list (e.g. product categories). The &lt;code&gt;text_general&lt;/code&gt;, &lt;code&gt;text_en&lt;/code&gt;, &lt;code&gt;text_en_splitting&lt;/code&gt;, and &lt;code&gt;text_en_splitting_tight&lt;/code&gt; field types are all great for text that will be searched, but with varying options depending on the kind of text. For example, the &lt;strong&gt;schema.xml&lt;/strong&gt; comments describe &lt;code&gt;text_en&lt;/code&gt; as:&lt;/p&gt;
 &lt;blockquote&gt;
@@ -97,57 +97,57 @@ but may be good for SKUs.  Can insert dashes in the wrong place and still match.
 &lt;p&gt;This sounds ideal for the Product Number. You can learn about all of the field types by reading the comments in the &lt;code&gt;&amp;lt;types&amp;gt;&lt;/code&gt; section of &lt;strong&gt;schema.xml&lt;/strong&gt;. Note that there&apos;s nothing special about these fields, per se -- they all roll up to the Java class &lt;code&gt;solr.TextField&lt;/code&gt;. However, it&apos;s the different tokenizers and filters applied to them that makes the difference. For example, do we convert the string to lowercase before indexing it? Do we &apos;stem&apos; words so that words like &apos;housing&apos; and &apos;purchasing&apos; become &apos;house&apos; and &apos;purchase&apos;? How do we know when to split a string into &apos;words&apos;, anyway? (What counts as a delimiter) It&apos;s worth spending some time in &lt;strong&gt;schema.xml&lt;/strong&gt; and examining the different field types and their properties.&lt;/p&gt;
 &lt;p&gt;Let&apos;s use the following field definitions for our products data set:&lt;/p&gt;
 &lt;pre class=&quot;brush: xml&quot;&gt;
-&lt;field name=&quot;id&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot; required=&quot;true&quot;&gt;&lt;/field&gt;
-&lt;field name=&quot;product_number&quot; type=&quot;text_en_splitting_tight&quot; indexed=&quot;true&quot; stored=&quot;true&quot; omitNorms=&quot;true&quot;&gt;&lt;/field&gt;
-&lt;field name=&quot;model_name&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot; omitNorms=&quot;true&quot;&gt;&lt;/field&gt;
-&lt;field name=&quot;name&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
-&lt;field name=&quot;product_description&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
-&lt;field name=&quot;product_category&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
-&lt;field name=&quot;product_subcategory&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot;&gt;&lt;/field&gt;
+&amp;lt;field name=&quot;id&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot; required=&quot;true&quot; /&amp;gt;
+&amp;lt;field name=&quot;product_number&quot; type=&quot;text_en_splitting_tight&quot; indexed=&quot;true&quot; stored=&quot;true&quot; omitNorms=&quot;true&quot; /&amp;gt;
+&amp;lt;field name=&quot;model_name&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot; omitNorms=&quot;true&quot; /&amp;gt;
+&amp;lt;field name=&quot;name&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot; /&amp;gt;
+&amp;lt;field name=&quot;product_description&quot; type=&quot;text_en&quot; indexed=&quot;true&quot; stored=&quot;true&quot; /&amp;gt;
+&amp;lt;field name=&quot;product_category&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot; /&amp;gt;
+&amp;lt;field name=&quot;product_subcategory&quot; type=&quot;string&quot; indexed=&quot;true&quot; stored=&quot;true&quot; /&amp;gt;
 &lt;/pre&gt;
 &lt;p&gt;Leave all of the other fields (after the first batch of fields) alone (e.g. the common metadata fields).&lt;/p&gt;
 &lt;p&gt;Now scroll down to where you see several &lt;code&gt;&amp;lt;copyField&amp;gt;&lt;/code&gt; tags. Copyfield commands are useful when you want to simplify your search query by only searching one field for a variety of different types of data. It&apos;s also useful when you want to index one field multiple ways. Replace the first batch of copy fields with the following:&lt;/p&gt;
 &lt;pre class=&quot;brush: xml&quot;&gt;
-&lt;copyField source=&quot;name&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
-&lt;copyField source=&quot;product_number&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
-&lt;copyField source=&quot;product_description&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
-&lt;copyField source=&quot;model_name&quot; dest=&quot;text&quot;&gt;&lt;/copyField&gt;
+&amp;lt;copyField source=&quot;name&quot; dest=&quot;text&quot; /&amp;gt;
+&amp;lt;copyField source=&quot;product_number&quot; dest=&quot;text&quot; /&amp;gt;
+&amp;lt;copyField source=&quot;product_description&quot; dest=&quot;text&quot; /&amp;gt;
+&amp;lt;copyField source=&quot;model_name&quot; dest=&quot;text&quot; /&amp;gt;
 &lt;/pre&gt;
 &lt;p&gt;And that&apos;s it for modifying the schema! Now, let&apos;s tell Solr how to query AdventureWorks and index our data.&lt;/p&gt;
 &lt;h2&gt;Data Import Handler&lt;/h2&gt;
 &lt;p&gt;Solr uses something called a Data Import Handler (DIH) to run batch imports from an external data source. To get started configuring one, you need a data configuration file. Go to &lt;strong&gt;c:\solr\adventureworks\solr\products\conf&lt;/strong&gt; and create a file named &lt;strong&gt;data-config.xml&lt;/strong&gt;. Put this in the file:&lt;/p&gt;
 &lt;pre class=&quot;brush: xml&quot;&gt;
-&lt;dataConfig&gt;  
-  &lt;dataSource type=&quot;JdbcDataSource&quot; name=&quot;ds1&quot;
+&amp;lt;dataConfig&amp;gt;  
+  &amp;lt;dataSource type=&quot;JdbcDataSource&quot; name=&quot;ds1&quot;
         driver=&quot;com.microsoft.sqlserver.jdbc.SQLServerDriver&quot;
         url=&quot;jdbc:sqlserver://localhost;databaseName=AdventureWorks2008R2&quot;
-        user=&quot;&lt;&lt;SQL USERNAME&gt;&gt;&quot;
-        password=&quot;&lt;&lt;SQL PASSWORD&gt;&gt;&quot;&gt;&lt;/dataSource&gt;
-  &lt;document&gt;
-    &lt;entity name=&quot;data&quot; dataSource=&quot;ds1&quot; pk=&quot;key&quot;
-    query=&quot;SELECT p.ProductID, p.Name, p.ProductNumber, pm.Name AS ModelName, pd.[Description], pc.Name AS CategoryName, ps.Name AS SubcategoryName FROM Production.Product p INNER JOIN Production.ProductSubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID INNER JOIN Production.ProductCategory pc ON ps.ProductCategoryID = pc.ProductCategoryID INNER JOIN Production.ProductModel pm ON pm.ProductModelID = p.ProductModelID INNER JOIN Production.ProductModelProductDescriptionCulture pmpdc ON pm.ProductModelID = pmpdc.ProductModelID INNER JOIN Production.Culture c ON pmpdc.CultureID = c.CultureID INNER JOIN Production.ProductDescription pd ON pmpdc.ProductDescriptionID = pd.ProductDescriptionID WHERE c.Name = &apos;English&apos;&quot;&gt;
-      &lt;field column=&quot;ProductID&quot; name=&quot;id&quot;&gt;&lt;/field&gt;
-      &lt;field column=&quot;ProductNumber&quot; name=&quot;product_number&quot;&gt;&lt;/field&gt;
-      &lt;field column=&quot;ModelName&quot; name=&quot;model_name&quot;&gt;&lt;/field&gt;
-      &lt;field column=&quot;Description&quot; name=&quot;product_description&quot;&gt;&lt;/field&gt;
-      &lt;field column=&quot;CategoryName&quot; name=&quot;product_category&quot;&gt;&lt;/field&gt;
-      &lt;field column=&quot;SubcategoryName&quot; name=&quot;product_subcategory&quot;&gt;&lt;/field&gt;
-    &lt;/entity&gt;
-  &lt;/document&gt;
-&lt;/dataConfig&gt;
+        user=&quot;SQL USERNAME&quot;
+        password=&quot;SQL PASSWORD&quot; /&amp;gt;
+  &amp;lt;document&amp;gt;
+    &amp;lt;entity name=&quot;data&quot; dataSource=&quot;ds1&quot; pk=&quot;key&quot;
+    query=&quot;SELECT p.ProductID, p.Name, p.ProductNumber, pm.Name AS ModelName, pd.[Description], pc.Name AS CategoryName, ps.Name AS SubcategoryName FROM Production.Product p INNER JOIN Production.ProductSubcategory ps ON p.ProductSubcategoryID = ps.ProductSubcategoryID INNER JOIN Production.ProductCategory pc ON ps.ProductCategoryID = pc.ProductCategoryID INNER JOIN Production.ProductModel pm ON pm.ProductModelID = p.ProductModelID INNER JOIN Production.ProductModelProductDescriptionCulture pmpdc ON pm.ProductModelID = pmpdc.ProductModelID INNER JOIN Production.Culture c ON pmpdc.CultureID = c.CultureID INNER JOIN Production.ProductDescription pd ON pmpdc.ProductDescriptionID = pd.ProductDescriptionID WHERE c.Name = &apos;English&apos;&quot;&amp;gt;
+      &amp;lt;field column=&quot;ProductID&quot; name=&quot;id&quot; /&amp;gt;
+      &amp;lt;field column=&quot;ProductNumber&quot; name=&quot;product_number&quot; /&amp;gt;
+      &amp;lt;field column=&quot;ModelName&quot; name=&quot;model_name&quot; /&amp;gt;
+      &amp;lt;field column=&quot;Description&quot; name=&quot;product_description&quot; /&amp;gt;
+      &amp;lt;field column=&quot;CategoryName&quot; name=&quot;product_category&quot; /&amp;gt;
+      &amp;lt;field column=&quot;SubcategoryName&quot; name=&quot;product_subcategory&quot; /&amp;gt;
+    &amp;lt;/entity&amp;gt;
+  &amp;lt;/document&amp;gt;
+&amp;lt;/dataConfig&amp;gt;
 &lt;/pre&gt;
 &lt;p&gt;The contents of this file are fairly self-explanatory: we first describe a data source, specifying its driver, url, username, password, and then describe the query that is associated with that data source. A query is represented by a &lt;code&gt;&amp;lt;document&amp;gt;&lt;/code&gt; tag, meaning each result from this query will go into one Lucene document. Inside the query we specify the fields that we care about and associate them to the Solr fields in our &lt;strong&gt;schema.xml&lt;/strong&gt; file.&lt;/p&gt;
 &lt;p&gt;Now, we have to tell solr that we want to use a data import handler with this configuration file. Open up your &lt;strong&gt;solrconfig.xml&lt;/strong&gt; file (should be located in &lt;strong&gt;c:\solr\adventureworks\solr\products\conf\solrconfig.xml&lt;/strong&gt;) and, anywhere in the request handlers section, add the following:&lt;/p&gt;
 &lt;pre class=&quot;brush: xml&quot;&gt;
-&lt;requestHandler name=&quot;/dataimport&quot; class=&quot;org.apache.solr.handler.dataimport.DataImportHandler&quot;&gt;
-  &lt;lst name=&quot;defaults&quot;&gt;
-    &lt;str name=&quot;config&quot;&gt;data-config.xml&lt;/str&gt;
-  &lt;/lst&gt;
-&lt;/requestHandler&gt;
+&amp;lt;requestHandler name=&quot;/dataimport&quot; class=&quot;org.apache.solr.handler.dataimport.DataImportHandler&quot;&amp;gt;
+  &amp;lt;lst name=&quot;defaults&quot;&amp;gt;
+    &amp;lt;str name=&quot;config&quot;&amp;gt;data-config.xml&amp;lt;/str&amp;gt;
+  &amp;lt;/lst&amp;gt;
+&amp;lt;/requestHandler&amp;gt;
 &lt;/pre&gt;
 &lt;p&gt;Then, near the top of this file, tell Solr to load the libraries that deal with data import:&lt;/p&gt;
 &lt;pre class=&quot;brush: xml&quot;&gt;
-&lt;lib dir=&quot;../../../dist/&quot; regex=&quot;solr-dataimporthandler-.*\.jar&quot;&gt;&lt;/lib&gt;
+&amp;lt;lib dir=&quot;../../../dist/&quot; regex=&quot;solr-dataimporthandler-.*\.jar&quot;&amp;gt;&amp;lt;/lib&amp;gt;
 &lt;/pre&gt;
 &lt;p&gt;Almost done! We just need to tell Solr about our driver, which in this case is the Microsoft-provided JDBC--&amp;gt;SQL Server driver. To have Solr load this driver, &lt;a href=&quot;http://msdn.microsoft.com/en-us/sqlserver/aa937724.aspx&quot;&gt;download it&lt;/a&gt; and, after installation, copy the &lt;strong&gt;sqljdbc4.jar&lt;/strong&gt; file to *&lt;em&gt;c:\solr\adventureworks\solr\products\lib*&lt;/em&gt;. (If no &lt;strong&gt;lib&lt;/strong&gt; folder exists, create one)&lt;/p&gt;
 &lt;p&gt;Now, start Solr:&lt;/p&gt;
