@@ -12,7 +12,6 @@ body
 #header {
 	position: fixed;
 	top: 0;
-	height: 5em;
 	background-color: #333;
 	width: 100%;
 	margin-left: auto;
@@ -44,7 +43,6 @@ body
 }
 #headerNav {
 	float: right;
-	margin: 0em 0 3em 1em;
 	padding: 0;
 	list-style: none;
 }
@@ -76,15 +74,46 @@ body
 /**********************************
  *           Other Layout         *
  **********************************/
+html, body
+{
+	height: 100%;          /* for sticky footer */
+}
+#wrap
+{
+	min-height: 100%;      /* for sticky footer */
+}
 #container
 {
+	overflow: auto;        /* for sticky footer */
+	padding-bottom: 25px;  /* for sticky footer */
 	margin-left:auto; 
 	margin-right: auto;
-	margin-top: 5em;
+	padding-top: 5em;
 	width:80%;
 	min-width: 800px;
 	max-width: 1100px;
 }
+#content 
+{
+	width:auto;
+}
+footer
+{
+	margin-top: -25px;    /* for sticky footer */
+	height: 25px;         /* for sticky footer */
+	clear: both;
+	text-align: center;
+	font-size: .7em;
+}
+/* Opera fix for sticky footer */
+body:before {
+	content:"";
+	height:100%;
+	float:left;
+	width:0;
+	margin-top:-32767px;/
+}
+
 #side 
 { 
 	float:right; 
@@ -101,15 +130,6 @@ body
 { 
 	font-size:2em;
 }
-#content 
-{
-	width:auto;
-}
-footer
-{
-	text-align: center;
-	font-size: .8em;
-}
 
 
 /*****************************
@@ -119,7 +139,7 @@ h1,h2,h3,h4,h5,h6
 { 
 	font-family: Segoe UI Light, Segoe WP Light, Segoe UI, Helvetica, sans-serif; 
 	font-weight: lighter;
-	margin-bottom:0px;
+	margin:0;
 }
 h1 
 { 
@@ -183,7 +203,7 @@ img
 .postpreview
 {
 	font-size: 0.9em;
-	margin: 1em;
+	padding: 1em;
 }
 
 .olderpostdate 
