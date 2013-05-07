@@ -12,7 +12,7 @@ tags:
 In this series of blog posts, I'm going to walk through the process of getting up and running with using Apache Solr in ASP.NET MVC. This post, the first in the series, will offer background information and show how to get Solr installed.
 
 - Part 1 (Background, installation)
-- [Part 2 (Custom schema, data import)](http://danpincas.azurewebsites.net/blog/searching-with-solr-part-2)
+- [Part 2 (Custom schema, data import)](/2013/03/28/searching-with-solr-part-2.html)
 
 ## Some Background
 
