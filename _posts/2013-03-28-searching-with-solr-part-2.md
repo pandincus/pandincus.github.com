@@ -9,7 +9,7 @@ tags:
 - search
 ---
 
-In the [last post](/blog/searching-with-solr-part-1) I introduced Solr, explained why it was helpful over straight Lucene, and showed how to get it up and running with some example data.
+In the [last post](/2013/03/03/searching-with-solr-part-1.html) I introduced Solr, explained why it was helpful over straight Lucene, and showed how to get it up and running with some example data.
 
 - [Part 1 (Background, installation)](/2013/03/03/searching-with-solr-part-1.html)
 - Part 2 (Custom schema, data import)
