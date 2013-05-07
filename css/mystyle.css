@@ -27,7 +27,7 @@ body
 #headerContent h3
 {
 	float: left;
-	font-size: 2em;
+	font-size: 1.8em;
 	margin: 0;
 	display: inline;
 }
@@ -52,6 +52,10 @@ body
 #headerNav li
 {
 	float: left;
+}
+#headerNav li#showMenu, #headerNav li#hideMenu
+{
+	display: none;
 }
 #headerNav li a
 {
