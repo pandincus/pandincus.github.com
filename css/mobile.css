@@ -71,6 +71,10 @@ body
 	color:white;
 	background: #d82;
 }
+#headerNav li a:hover
+{
+	background: #fb5;
+}
 #headerNav li img
 {
 	vertical-align: middle;
